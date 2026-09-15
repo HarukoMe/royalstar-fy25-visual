@@ -1,26 +1,17 @@
 {
-  "name": "if2-conduct",
+  "name": "royalstar-workspace",
   "private": true,
-  "version": "0.1.0",
-  "type": "module",
+  "workspaces": [
+    "apps/if2",
+    "apps/soundings"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "test": "vitest run",
-    "ingest": "python3 scripts/ingest_sources.py"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
-    "jsdom": "^25.0.1",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "vitest": "^2.1.4"
+    "dev": "npm run dev -w if2-conduct",
+    "dev:if2": "npm run dev -w if2-conduct",
+    "dev:soundings": "npm run dev -w soundings",
+    "test": "npm test -w if2-conduct && npm test -w soundings",
+    "test:if2": "npm test -w if2-conduct",
+    "test:soundings": "npm test -w soundings",
+    "build": "npm run build -w if2-conduct && npm run build -w soundings"
   }
 }
