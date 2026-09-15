@@ -1,0 +1,14 @@
+.hub,
+.lab {
+  font-family: var(--font-mono);
+  fill: var(--ink);
+}
+
+.hub {
+  font-size: 0.85rem;
+}
+
+.lab {
+  font-size: 0.68rem;
+  fill: var(--ink-dim);
+}

@@ -1,0 +1,21 @@
+.cap,
+.lab,
+.val {
+  font-family: var(--font-mono);
+  fill: var(--ink-dim);
+}
+
+.cap {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lab {
+  font-size: 0.68rem;
+}
+
+.val {
+  font-size: 0.72rem;
+  fill: var(--ink);
+}

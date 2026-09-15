@@ -1,0 +1,51 @@
+.svg {
+  overflow: visible;
+}
+
+.row {
+  opacity: 0;
+}
+
+.svg[data-in='true'] .row {
+  animation: rowIn 620ms var(--ease-out) both;
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bar {
+  transition: width 1s var(--ease-out);
+}
+
+.change {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalRule {
+  stroke: rgb(255 255 255 / 18%);
+  stroke-width: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svg[data-in='true'] .row {
+    animation: none;
+  }
+
+  .row {
+    opacity: 1;
+  }
+
+  .bar {
+    transition: none;
+  }
+}

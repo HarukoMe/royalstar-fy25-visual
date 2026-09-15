@@ -1,0 +1,43 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  align-items: baseline;
+}
+
+.date {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.val {
+  font-family: var(--font-mono);
+  font-size: var(--step-1);
+}
+
+.note {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+}
+
+.track {
+  height: 10px;
+  background: var(--slate);
+}
+
+.fill {
+  height: 100%;
+}

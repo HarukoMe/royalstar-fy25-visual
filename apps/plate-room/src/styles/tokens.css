@@ -1,0 +1,73 @@
+/*
+ * Plate Room — print-atelier tokens.
+ * Colour is still accounting grammar. Charts take SemanticRole, never a hex.
+ */
+
+:root {
+  --abyss: #14120f;
+  --deep: #1c1914;
+  --slate: #26221b;
+  --slate-hi: #322c23;
+  --hairline: rgb(232 222 204 / 12%);
+  --hairline-strong: rgb(232 222 204 / 22%);
+
+  --ink: #f2ebe0;
+  --ink-dim: #b3a894;
+  --ink-faint: #7d7464;
+
+  --role-gross: #c96a3c;
+  --role-gross-lo: #5a2c16;
+  --role-ceded: #5a52c8;
+  --role-ceded-lo: #24205a;
+  --role-retained: #c9a227;
+  --role-retained-hi: #e8cc6a;
+  --role-retained-lo: #3d320c;
+  --role-operating: #8a7d6b;
+  --role-operating-lo: #3a342c;
+  --role-investment: #6b8f71;
+  --role-investment-lo: #243328;
+
+  --dir-up: #7fbf7a;
+  --dir-down: #d2654a;
+
+  --tier-reported: #b3a894;
+  --tier-calculated: #6b8f71;
+  --tier-interpretation: #c9a227;
+
+  --font-display: 'Gloock', 'Bodoni MT', Didot, serif;
+  --font-body: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', 'Courier New', ui-monospace, monospace;
+  --font-monument: var(--font-display);
+
+  --step--2: 0.68rem;
+  --step--1: 0.78rem;
+  --step-0: 0.95rem;
+  --step-1: 1.05rem;
+  --step-2: 1.2rem;
+  --step-3: 1.45rem;
+  --step-4: 1.75rem;
+  --step-5: 2.1rem;
+  --step-6: 2.5rem;
+  --step-7: 3rem;
+  --step-8: 3.6rem;
+  --step-monument: 3.2rem;
+
+  --gutter: clamp(1.25rem, 1rem + 2vw, 3rem);
+  --measure: 34rem;
+  --content-max: 72rem;
+  --movement-gap: clamp(3.5rem, 2.5rem + 4vw, 6.5rem);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.55, 0, 0.45, 1);
+  --dur-fast: 120ms;
+  --dur-base: 280ms;
+  --dur-slow: 560ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+  }
+}

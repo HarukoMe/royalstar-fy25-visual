@@ -3,15 +3,18 @@
   "private": true,
   "workspaces": [
     "apps/if2",
-    "apps/soundings"
+    "apps/soundings",
+    "apps/plate-room"
   ],
   "scripts": {
     "dev": "npm run dev -w if2-conduct",
     "dev:if2": "npm run dev -w if2-conduct",
     "dev:soundings": "npm run dev -w soundings",
-    "test": "npm test -w if2-conduct && npm test -w soundings",
+    "dev:plate-room": "npm run dev -w royalstar-fy2025",
+    "test": "npm test -w if2-conduct && npm test -w soundings && npm test -w royalstar-fy2025",
     "test:if2": "npm test -w if2-conduct",
     "test:soundings": "npm test -w soundings",
-    "build": "npm run build -w if2-conduct && npm run build -w soundings"
+    "test:plate-room": "npm test -w royalstar-fy2025",
+    "build": "npm run build -w if2-conduct && npm run build -w soundings && npm run build -w royalstar-fy2025"
   }
 }

@@ -1,0 +1,144 @@
+.svg {
+  overflow: visible;
+}
+
+.cellGroup {
+  opacity: 0;
+  cursor: crosshair;
+}
+
+.svg[data-in='true'] .cellGroup {
+  animation: cellIn 620ms var(--ease-out) both;
+}
+
+@keyframes cellIn {
+  from {
+    opacity: 0;
+    transform: translate(-6px, -6px) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cell {
+  transition:
+    fill-opacity var(--dur-fast) var(--ease-out),
+    stroke-opacity var(--dur-fast) var(--ease-out);
+}
+
+.yearLabel {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink-faint);
+  transition: fill var(--dur-fast) var(--ease-out);
+}
+
+.yearLabel[data-hot='true'] {
+  fill: var(--ink);
+}
+
+.total {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink-dim);
+  transition: fill var(--dur-fast) var(--ease-out);
+}
+
+.total[data-hot='true'] {
+  fill: var(--ink);
+}
+
+.dev {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev[data-dir='fav'] {
+  fill: var(--dir-up);
+}
+
+.dev[data-dir='adv'] {
+  fill: var(--dir-down);
+}
+
+.curveRule {
+  stroke: rgb(255 255 255 / 10%);
+  stroke-width: 1;
+}
+
+.curve {
+  animation: curveIn 420ms var(--ease-out) both;
+}
+
+@keyframes curveIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.footnotes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+  align-items: center;
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.footnotes span {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.markAdverse,
+.markFavourable {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+.markAdverse {
+  border-top: 6px solid var(--dir-down);
+}
+
+.markFavourable {
+  border-bottom: 6px solid var(--dir-up);
+}
+
+.hint {
+  margin-left: auto;
+  color: var(--ink-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svg[data-in='true'] .cellGroup,
+  .curve {
+    animation: none;
+  }
+
+  .cellGroup {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 52rem) {
+  .hint {
+    margin-left: 0;
+  }
+}
