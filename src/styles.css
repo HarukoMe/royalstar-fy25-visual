@@ -312,8 +312,25 @@ ol.do li {
   grid-template-columns: 10px 1fr auto;
   gap: 0.7rem;
   align-items: center;
-  padding: 0.55rem 0;
+  padding: 0.62rem 0;
   border-bottom: 1px dashed var(--line);
+  font-size: 0.86rem;
+}
+
+.uncertified {
+  display: inline-block;
+  margin: 0.45rem 0 0.2rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--slow);
+  color: var(--slow);
+  letter-spacing: 0.18em;
+  font-size: 0.68rem;
+}
+
+.subline.strong {
+  color: var(--paper);
+  font-size: 0.84rem;
+  max-width: 36ch;
 }
 
 .knot {

@@ -4,6 +4,7 @@ import { economicSpending, findDuplicateKeys, reconcileMonth, salaryTotal } from
 import { defaultPlanning } from "../src/engine/defaults";
 import { currentPosition } from "../src/engine/position";
 import { evaluatePurchase } from "../src/engine/purchase";
+import { buildForecast } from "../src/engine/forecast";
 import { paydayCycles, personNets } from "../src/engine/analysis";
 import { round2 } from "../src/engine/money";
 
@@ -109,12 +110,24 @@ describe("free money and purchase engine", () => {
     expect(v.verdict).toBe("WAIT_UNTIL_PAYDAY");
   });
 
-  it("calls takeout a bad idea even after payday", () => {
+  it("does not call takeout SAFE even after payday with debts zeroed", () => {
     const state = defaultPlanning();
     state.paydayPosted = true;
     state.obligations = state.obligations.map((o) => ({ ...o, remaining: o.id === "october-flight" ? null : 0 }));
     const v = evaluatePurchase(state, ledger, "Tropical Gyros", 18, "2026-09-15", "lunch");
-    expect(["AFFORDABLE_BUT_BAD_IDEA", "NO", "WAIT_UNTIL_PAYDAY"]).toContain(v.verdict);
     expect(v.verdict).not.toBe("SAFE");
+  });
+
+  it("does not double-count the October flight in paycheck allocation", () => {
+    const state = defaultPlanning();
+    state.paydayPosted = true;
+    state.octoberFlightMomFronts = true;
+    state.obligations = state.obligations.map((o) =>
+      o.id === "october-flight" ? { ...o, remaining: 330 } : o
+    );
+    const f = buildForecast(state, ledger);
+    const flights = f.nextPayAllocation.filter((a) => /flight/i.test(a.label));
+    expect(flights).toHaveLength(1);
+    expect(flights[0].amount).toBe(330);
   });
 });

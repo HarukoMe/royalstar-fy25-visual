@@ -87,11 +87,15 @@ export const buildForecast = (state: PlanningState, ledger: LedgerTransaction[])
     { label: "Fuel", amount: 55 },
     { label: "Fees", amount: 8.8 },
   ];
-  if (state.octoberFlightMomFronts && nextPay >= "2026-10-01") {
-    allocation.unshift({ label: "Mom — October flight", amount: state.octoberFlightAmount });
-  }
   const typedNow = state.obligations.filter((o) => o.remaining && o.remaining > 0);
   for (const o of typedNow) allocation.unshift({ label: o.name, amount: o.remaining as number });
+  if (
+    state.octoberFlightMomFronts &&
+    nextPay >= "2026-10-01" &&
+    !typedNow.some((o) => o.id === "october-flight")
+  ) {
+    allocation.unshift({ label: "October flight repayment to Mom", amount: state.octoberFlightAmount });
+  }
 
   const payAmt = state.expectedPayAmount;
   const allocSum = round2(allocation.reduce((s, a) => s + a.amount, 0));

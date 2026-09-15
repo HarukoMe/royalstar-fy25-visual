@@ -61,8 +61,9 @@ const Depth = ({ value, certifiable }: { value: number; certifiable: boolean }) 
       </div>
       <div className="depth-read">
         <div className="depth-label">Actual free money</div>
+        {!certifiable && <div className="uncertified">Uncertified</div>}
         <div className={`depth-num ${cls}`}>{money(value)}</div>
-        <div className="subline">
+        <div className={`subline ${certifiable ? "" : "strong"}`}>
           {certifiable
             ? "This is spendable after spoken-for money and the B$100 floor."
             : "Uncertified. Untyped debts and the September statement gap mean this number is a floor, not a green light."}
@@ -129,6 +130,11 @@ export const App = () => {
   useEffect(() => {
     localStorage.setItem(RULES_KEY, JSON.stringify(rules));
   }, [rules]);
+
+  useEffect(() => {
+    if (!verdict) return;
+    setVerdict(evaluatePurchase(planning, ledger, item, Number(price) || 0, when, why));
+  }, [planning, ledger]);
 
   const setOb = (id: string, remaining: number | null) => {
     setPlanning((p) => ({
