@@ -89,6 +89,23 @@ describe("session engine", () => {
     expect(a.kind).toBe("retrieve");
   });
 
+  it("retrieves the unit just read instead of skipping ahead", () => {
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    if (a.kind === "predict") {
+      s = beginGrade(s, a.item, "illegal to drive on a public road without liability cover", 5000, false);
+      s = commitGrade(s, 3);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      s = markRead(s, a.unit);
+      a = nextActivity(s);
+      expect(a.kind).toBe("retrieve");
+      if (a.kind === "retrieve") expect(a.mode).toBe("encode");
+    }
+  });
+
   it("treats rapid wrong answers as guessing adaptation", () => {
     const { signals } = noteAnswer(emptyAttention(), 400, false, false);
     const again = noteAnswer(

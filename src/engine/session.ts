@@ -123,6 +123,18 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     return act;
   }
 
+  const lastIntro = state.lastConceptIds[0];
+  if (lastIntro) {
+    const st = state.learner.concepts[lastIntro];
+    const justRead = state.log.events.some((e) => e.type === "read" && e.conceptIds?.includes(lastIntro));
+    const noRetrieval = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) === 0;
+    if (justRead && noRetrieval) {
+      const item = pickItem(curr, lastIntro, state, { preferProduction: true, avoidId: state.lastItemId });
+      decide(state, now, "Immediate retrieval after encoding", ["testing effect", lastIntro], "retrieve");
+      return retrieveAct(item, "encode");
+    }
+  }
+
   const due = dueConceptIds(state.learner, now).filter((id) => shouldReviewNow(state, id, now));
   const mixReviews = due.length > 0 && (state.retrieveCount % 3 === 2 || state.introducedThisSession.length >= 1);
 
@@ -540,12 +552,21 @@ export function buildDebrief(state: EngineState, now = Date.now()): DebriefRepor
   const deferred: DebriefReport["deferred"] = [];
   const reviews: DebriefReport["reviews"] = [];
 
+  for (const e of state.log.events) {
+    if (e.type === "graded" && e.payload?.errorClass === "confident-error") {
+      const id = e.conceptIds?.[0];
+      if (id && !confidentErrors.some((x) => x.id === id)) {
+        const title = curr.concepts.find((c) => c.id === id)?.title ?? id;
+        confidentErrors.push({ id, title });
+      }
+    }
+  }
   for (const c of curr.concepts) {
     const st = recomputeMastery(state.learner.concepts[c.id] ?? emptyState(c.id), now);
     if (!st.exposures) continue;
     const title = c.title;
     if (st.confidentErrors && st.lastFailAt && now - st.lastFailAt < 24 * 3600_000) {
-      confidentErrors.push({ id: c.id, title });
+      if (!confidentErrors.some((x) => x.id === c.id)) confidentErrors.push({ id: c.id, title });
     }
     if (Object.keys(st.confusedWithHits).length) misconceptions.push({ id: c.id, title });
     if (st.estimatedMastery >= 0.45 && st.productionSuccesses > 0) understood.push({ id: c.id, title });
