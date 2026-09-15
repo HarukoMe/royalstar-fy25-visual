@@ -89,11 +89,22 @@
 }
 
 .amount {
-  font-size: var(--step-monument);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 0.86;
+  letter-spacing: -0.06em;
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
-  text-shadow: 0 0 40px rgb(0 0 0 / 55%);
+  text-shadow: 0 12px 40px rgb(0 0 0 / 45%);
+}
+
+.currency {
+  font-weight: 400;
+  letter-spacing: -0.08em;
+  margin-right: 0.04em;
+  opacity: 0.88;
 }
 
 .basisLabel {
@@ -164,9 +175,9 @@
   }
 
   .amount {
-    font-size: clamp(3.2rem, 16vw, 7rem);
     white-space: normal;
-    line-height: 0.82;
+    line-height: 0.9;
+    font-size: clamp(2.4rem, 12vw, 4.8rem) !important;
   }
 
   .copy {

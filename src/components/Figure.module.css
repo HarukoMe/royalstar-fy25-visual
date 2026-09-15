@@ -70,19 +70,19 @@
 
 /* Sizes */
 .hero .value {
-  font-family: var(--font-monument);
+  font-family: var(--font-mono);
   font-size: var(--step-monument);
-  font-weight: 700;
-  letter-spacing: -0.055em;
-  line-height: 0.8;
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.82;
 }
 
 .display .value {
-  font-family: var(--font-monument);
-  font-size: var(--step-5);
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--step-4);
+  font-weight: 500;
   letter-spacing: -0.04em;
-  line-height: 0.88;
+  line-height: 0.92;
 }
 
 .large .value {

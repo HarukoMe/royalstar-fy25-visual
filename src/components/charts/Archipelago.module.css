@@ -11,7 +11,11 @@
 }
 
 .readoutValue {
+  font-family: var(--font-mono);
   font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.85;
   color: inherit;
 }
 

@@ -53,7 +53,7 @@ export function ChartFrame({
             onClick={() => setTableOpen((o) => !o)}
             aria-expanded={tableOpen}
           >
-            {tableOpen ? 'Hide' : 'Show'} underlying data
+            {tableOpen ? 'Hide table' : 'Table'}
           </button>
           {tableOpen && (
             <div className={styles.table}>

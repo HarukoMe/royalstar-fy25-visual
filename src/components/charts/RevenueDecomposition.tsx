@@ -53,7 +53,7 @@ export function RevenueDecomposition() {
         {(width) => {
           const isNarrow = width < 720;
           const height = isNarrow ? 520 : 440;
-          const pad = { top: 54, bottom: 56, left: isNarrow ? 8 : 16, right: isNarrow ? 8 : 16 };
+          const pad = { top: 54, bottom: 72, left: isNarrow ? 8 : 16, right: isNarrow ? 12 : 88 };
           const plotW = width - pad.left - pad.right;
           const plotH = height - pad.top - pad.bottom;
 

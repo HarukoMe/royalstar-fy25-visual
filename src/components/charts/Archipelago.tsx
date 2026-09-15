@@ -30,10 +30,10 @@ const LAYOUT: readonly Node[] = [
   { short: 'AIA', name: 'Anguilla', lon: -63.07, lat: 18.22 },
 ];
 
-const LON0 = -82.4;
-const LON1 = -61.8;
-const LAT0 = 17.4;
-const LAT1 = 26.2;
+const LON0 = -83.2;
+const LON1 = -60.4;
+const LAT0 = 17.1;
+const LAT1 = 26.6;
 
 export function Archipelago() {
   const { ref, inView } = useInView<HTMLDivElement>(0.2);
@@ -77,8 +77,8 @@ export function Archipelago() {
         }
       >
         {(width) => {
-          const height = Math.max(440, Math.min(720, width * 0.58));
-          const pad = { top: 36, right: 28, bottom: 36, left: 28 };
+          const height = Math.max(480, Math.min(760, width * 0.62));
+          const pad = { top: 40, right: 110, bottom: 48, left: 36 };
           const px = (lon: number) => pad.left + ((lon - LON0) / (LON1 - LON0)) * (width - pad.left - pad.right);
           const py = (lat: number) =>
             pad.top + ((LAT1 - lat) / (LAT1 - LAT0)) * (height - pad.top - pad.bottom);
@@ -135,9 +135,9 @@ export function Archipelago() {
                   5,
                   Math.sqrt(n.prior / Math.max(...nodes.map((m) => m.value))) * maxR,
                 );
-                const east = n.lon > -70;
-                const labelX = east ? cx + r + 12 : cx - r - 12;
-                const anchor = east ? 'start' : 'end';
+                const labelRight = n.lon < -68 && cx + r + 160 < width - 8;
+                const labelX = labelRight ? cx + r + 12 : cx - r - 12;
+                const anchor = labelRight ? 'start' : 'end';
                 const growing = n.growth >= 0;
 
                 return (
@@ -194,7 +194,7 @@ export function Archipelago() {
 
       <div className={styles.readout}>
         <span className="eyebrow">{selected.name}</span>
-        <p className={`${styles.readoutValue} monument`} style={{ color: roleColor('gross') }}>
+        <p className={styles.readoutValue} style={{ color: roleColor('gross') }}>
           ${compact(selected.value)}
         </p>
         <p className={styles.readoutMeta}>

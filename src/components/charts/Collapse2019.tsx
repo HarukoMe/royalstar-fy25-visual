@@ -95,10 +95,14 @@ export function Collapse2019() {
         <div className={styles.copy}>
           <p className={styles.kicker}>Accident year 2019 · Note 13</p>
           <p
-            className={`${styles.amount} monument`}
-            style={{ color: isNet ? roleColor('retained', 'high') : roleColor('gross') }}
+            className={styles.amount}
+            style={{
+              color: isNet ? roleColor('retained', 'high') : roleColor('gross'),
+              fontSize: `${lerp(16.5, 6.2, eased)}vw`,
+            }}
           >
-            ${exact(shown)}
+            <span className={styles.currency}>$</span>
+            {exact(shown)}
           </p>
           <p className={styles.basisLabel}>{isNet ? 'Net of reinsurance' : 'Gross of reinsurance'}</p>
           <dl className={styles.meta}>

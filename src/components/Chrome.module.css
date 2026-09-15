@@ -252,3 +252,24 @@
   color: var(--ink-faint);
   line-height: 1.5;
 }
+
+@media (max-width: 48rem) {
+  .controls {
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 1rem);
+  }
+
+  .controlLabel {
+    display: none;
+  }
+
+  .chip,
+  .palette,
+  .basisButton {
+    font-size: 0.58rem;
+  }
+}
