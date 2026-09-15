@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useStore } from '@/state/useStore';
 import { Controls, KeyboardShortcuts, ProgressRail } from '@/components/Chrome';
 import { CommandPalette } from '@/components/CommandPalette';
-import { Bathymetry } from '@/components/Bathymetry';
+import { RegistrationMarks } from '@/components/RegistrationMarks';
 import { Overture } from '@/movements/Overture';
 import { Growth } from '@/movements/Growth';
 import { Cost } from '@/movements/Cost';
@@ -23,8 +23,7 @@ export function App() {
   return (
     <>
       <div className={styles.ambient} aria-hidden="true">
-        <Bathymetry />
-        <span className={styles.horizon} />
+        <RegistrationMarks />
       </div>
 
       <KeyboardShortcuts />

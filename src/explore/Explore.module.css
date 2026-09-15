@@ -33,8 +33,8 @@
 }
 
 .title {
-  font-size: var(--step-6);
-  letter-spacing: -0.03em;
+  font-size: var(--step-4);
+  letter-spacing: 0;
 }
 
 .standfirst {
@@ -48,7 +48,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgb(2 12 10 / 94%);
+  background: rgb(20 18 15 / 94%);
   border-bottom: 1px solid var(--hairline);
 }
 

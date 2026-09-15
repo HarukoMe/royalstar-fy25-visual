@@ -11,13 +11,11 @@ export function Cost() {
       meta={MOVEMENTS[2]!}
       title={
         <>
-          +15.5m in.
-          <br />
-          <em>+0.14m kept.</em>
+          +15.5m in, +0.14m kept.
         </>
       }
     >
-      <Canvas wide>
+      <Canvas>
         <RevenueDecomposition />
       </Canvas>
       <Interpretation id="protectionCostlier" />

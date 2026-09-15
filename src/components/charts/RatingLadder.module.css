@@ -1,60 +1,14 @@
-.svg {
-  overflow: visible;
-}
-
-.row {
-  opacity: 0;
-}
-
-.svg[data-in='true'] .row {
-  animation: rowIn 680ms var(--ease-out) both;
-}
-
-@keyframes rowIn {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.bar {
-  transition: width 1.1s var(--ease-out);
-}
-
-.band {
+.hub,
+.lab {
   font-family: var(--font-mono);
-  font-size: 0.86rem;
   fill: var(--ink);
-  letter-spacing: 0.06em;
 }
 
-.rule {
-  stroke: rgb(255 255 255 / 10%);
-  stroke-width: 1;
+.hub {
+  font-size: 0.85rem;
 }
 
-.note {
-  margin-top: 1rem;
-  font-size: 0.78rem;
-  color: var(--ink-faint);
-  line-height: 1.65;
-  max-width: 44rem;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .svg[data-in='true'] .row {
-    animation: none;
-  }
-
-  .row {
-    opacity: 1;
-  }
-
-  .bar {
-    transition: none;
-  }
+.lab {
+  font-size: 0.68rem;
+  fill: var(--ink-dim);
 }

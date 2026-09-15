@@ -1,79 +1,67 @@
 /*
- * Windward Cut — design tokens.
- *
- * Colour is accounting grammar, not decoration.
- * The five --role-* tokens are the only legitimate source of data colour.
- * Chart components receive a SemanticRole, never a colour. See src/data/roles.ts.
+ * Plate Room — print-atelier tokens.
+ * Colour is still accounting grammar. Charts take SemanticRole, never a hex.
  */
 
 :root {
-  /* Ground — mangrove night, not generic navy */
-  --abyss: #020c0a;
-  --deep: #071a16;
-  --slate: #0d2a24;
-  --slate-hi: #163832;
-  --hairline: rgb(232 244 236 / 9%);
-  --hairline-strong: rgb(232 244 236 / 18%);
+  --abyss: #14120f;
+  --deep: #1c1914;
+  --slate: #26221b;
+  --slate-hi: #322c23;
+  --hairline: rgb(232 222 204 / 12%);
+  --hairline-strong: rgb(232 222 204 / 22%);
 
-  /* Ink */
-  --ink: #e9f4ee;
-  --ink-dim: #8fad9e;
-  --ink-faint: #5d7a6d;
+  --ink: #f2ebe0;
+  --ink-dim: #b3a894;
+  --ink-faint: #7d7464;
 
-  /* Semantic data roles */
-  --role-gross: #2f9fca;
-  --role-gross-lo: #0e3d52;
-  --role-ceded: #7c6cf0;
-  --role-ceded-lo: #2a2158;
+  --role-gross: #c96a3c;
+  --role-gross-lo: #5a2c16;
+  --role-ceded: #5a52c8;
+  --role-ceded-lo: #24205a;
   --role-retained: #c9a227;
   --role-retained-hi: #e8cc6a;
   --role-retained-lo: #3d320c;
-  --role-operating: #4d5f58;
-  --role-operating-lo: #24302c;
-  --role-investment: #3db8a8;
-  --role-investment-lo: #164740;
+  --role-operating: #8a7d6b;
+  --role-operating-lo: #3a342c;
+  --role-investment: #6b8f71;
+  --role-investment-lo: #243328;
 
-  /* Direction of change — deltas only */
-  --dir-up: #3ecf9a;
-  --dir-down: #e06a58;
+  --dir-up: #7fbf7a;
+  --dir-down: #d2654a;
 
-  /* Provenance tiers */
-  --tier-reported: #8fad9e;
-  --tier-calculated: #3db8a8;
+  --tier-reported: #b3a894;
+  --tier-calculated: #6b8f71;
   --tier-interpretation: #c9a227;
 
-  /* Type */
-  --font-monument: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
-  --font-display: 'Newsreader', 'Iowan Old Style', Georgia, serif;
-  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Gloock', 'Bodoni MT', Didot, serif;
+  --font-body: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', 'Courier New', ui-monospace, monospace;
+  --font-monument: var(--font-display);
 
-  /* Scale — monument sizes live outside this for overflow moments */
-  --step--2: clamp(0.64rem, 0.62rem + 0.08vw, 0.72rem);
-  --step--1: clamp(0.78rem, 0.74rem + 0.14vw, 0.88rem);
-  --step-0: clamp(0.95rem, 0.9rem + 0.22vw, 1.08rem);
-  --step-1: clamp(1.12rem, 1.02rem + 0.38vw, 1.36rem);
-  --step-2: clamp(1.32rem, 1.14rem + 0.62vw, 1.72rem);
-  --step-3: clamp(1.58rem, 1.28rem + 0.95vw, 2.2rem);
-  --step-4: clamp(1.9rem, 1.42rem + 1.45vw, 2.85rem);
-  --step-5: clamp(2.3rem, 1.55rem + 2.2vw, 3.7rem);
-  --step-6: clamp(2.8rem, 1.6rem + 3.4vw, 4.8rem);
-  --step-7: clamp(3.4rem, 1.5rem + 5vw, 6.4rem);
-  --step-8: clamp(4.2rem, 1.2rem + 7.5vw, 8.8rem);
-  --step-monument: clamp(5.5rem, 4rem + 14vw, 18rem);
+  --step--2: 0.68rem;
+  --step--1: 0.78rem;
+  --step-0: 0.95rem;
+  --step-1: 1.05rem;
+  --step-2: 1.2rem;
+  --step-3: 1.45rem;
+  --step-4: 1.75rem;
+  --step-5: 2.1rem;
+  --step-6: 2.5rem;
+  --step-7: 3rem;
+  --step-8: 3.6rem;
+  --step-monument: 3.2rem;
 
-  /* Rhythm */
-  --gutter: clamp(1.1rem, 0.6rem + 3vw, 4.5rem);
-  --measure: 36rem;
-  --content-max: 96rem;
-  --movement-gap: clamp(5rem, 3rem + 12vw, 18rem);
+  --gutter: clamp(1.25rem, 1rem + 2vw, 3rem);
+  --measure: 34rem;
+  --content-max: 72rem;
+  --movement-gap: clamp(3.5rem, 2.5rem + 4vw, 6.5rem);
 
-  /* Motion */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-fast: 160ms;
-  --dur-base: 480ms;
-  --dur-slow: 1100ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.55, 0, 0.45, 1);
+  --dur-fast: 120ms;
+  --dur-base: 280ms;
+  --dur-slow: 560ms;
 }
 
 @media (prefers-reduced-motion: reduce) {

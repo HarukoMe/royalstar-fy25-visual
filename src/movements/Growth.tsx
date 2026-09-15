@@ -15,7 +15,7 @@ export function Growth() {
         </>
       }
     >
-      <Canvas wide>
+      <Canvas>
         <Archipelago />
       </Canvas>
       <Interpretation id="growthConcentrated" />
