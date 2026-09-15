@@ -38,7 +38,7 @@ export const evaluatePurchase = (
     verdict = "WAIT_UNTIL_PAYDAY";
     if (state.paydayPosted) {
       verdict = "NO";
-      text = `Technically there is cash, but free money is uncertified because ${pos.unresolved.map((u) => u.name).join(", ") || "obligations"} still have no remaining amount. Do not spend B$${price.toFixed(2)} on ${item} until those numbers exist.`;
+      text = `Technically there is cash, but free money is uncertified. Untyped remaining amounts: ${pos.unresolved.map((u) => u.name).join("; ") || "obligations"}. Do not spend B$${price.toFixed(2)} on ${item} until those numbers exist.`;
     } else {
       text = `Wait. September activity is not on a statement, debts are untyped, and this is not a survival purchase.`;
     }
