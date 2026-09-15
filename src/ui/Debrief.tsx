@@ -50,6 +50,13 @@ export function Debrief({ report, onAtlas, onAgain }: { report: DebriefReport; o
           <p className="note">{report.masteryVsExam}</p>
         </section>
         <section>
+          <h3>Still on the journey</h3>
+          <p className="note">
+            {report.coverageRemaining} mapped concepts have not been encountered yet. One correct
+            answer today does not retire a concept — it will return after a gap.
+          </p>
+        </section>
+        <section>
           <h3>Why the next session does what it does</h3>
           <p className="lede">{report.nextFocus}</p>
         </section>

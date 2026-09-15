@@ -21,6 +21,7 @@ import { tutorExplain, tutorOnItem } from "../engine/tutor";
 import { createBrowserAudio } from "../engine/audio";
 import { saveLearner, saveSession } from "../storage";
 import type { PracticeItem } from "../engine/types";
+import { McqCard } from "./McqCard";
 
 export function Focus({
   engine,
@@ -117,9 +118,10 @@ export function Focus({
   }
 
   function lockConfidence() {
-    if (confidence == null || !engine.pending) return;
-    const mismatch = confidenceMismatch(confidence, engine.pending.auto.success);
-    let e = commitGrade(engine, confidence);
+    const conf = confidence ?? 3;
+    if (!engine.pending) return;
+    const mismatch = confidenceMismatch(conf, engine.pending.auto.success);
+    let e = commitGrade(engine, conf);
     if (mismatch) e = signal(e, mismatch);
     saveLearner(e.learner);
     setEngine(e);
@@ -201,33 +203,44 @@ export function Focus({
           </>
         )}
 
-        {item && (
+        {item && item.options && item.type !== "prediction" && (
           <>
-            <h2>{item.type === "prediction" ? "Before the text" : "Retrieve"}</h2>
-            <p className="lede">{item.prompt}</p>
-            {item.options && (
-              <div className="options">
-                {item.options.map((o, i) => (
-                  <button
-                    key={o}
-                    data-on={choice === i ? "1" : "0"}
-                    onClick={() => {
-                      setChoice(i);
-                      setDraft(o);
-                    }}
-                  >
-                    {String.fromCharCode(65 + i)}. {o}
-                  </button>
-                ))}
+            <h2>{item.examStyle ? "Exam-shaped question" : "Question"}</h2>
+            <McqCard
+              item={item}
+              onCommit={(text, _i, conf) => {
+                setConfidence(conf);
+                submitItem(item, text, false);
+              }}
+            />
+            {engine.pending && (
+              <div className="row">
+                <button onClick={lockConfidence}>Continue</button>
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    const t = tutorExplain(item.conceptIds[0], engine.pending?.auto.success ? undefined : "fail");
+                    setTutor(t.text);
+                    setSources(t.sources.map((x) => x.locator));
+                  }}
+                >
+                  Explain differently
+                </button>
               </div>
             )}
-            {!item.options && (
-              <textarea
-                value={draft}
-                onChange={(ev) => setDraft(ev.target.value)}
-                placeholder="Answer from memory. Names, limits, who is indemnified."
-              />
-            )}
+            {tutor && <p>{tutor}</p>}
+          </>
+        )}
+
+        {item && (!item.options || item.type === "prediction") && (
+          <>
+            <h2>{item.type === "prediction" ? "Before the text" : "Retrieve in your own words"}</h2>
+            <p className="lede">{item.prompt}</p>
+            <textarea
+              value={draft}
+              onChange={(ev) => setDraft(ev.target.value)}
+              placeholder="Answer from memory. Names, limits, who is indemnified."
+            />
             {!engine.pending && (
               <div className="row">
                 <button disabled={!draft.trim()} onClick={() => submitItem(item, draft, false)}>
@@ -266,16 +279,6 @@ export function Focus({
                 <div className="row">
                   <button disabled={confidence == null} onClick={lockConfidence}>
                     Continue
-                  </button>
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      const t = tutorExplain(item.conceptIds[0], engine.pending?.auto.success ? undefined : "fail");
-                      setTutor(t.text);
-                      setSources(t.sources.map((x) => x.locator));
-                    }}
-                  >
-                    Explain differently
                   </button>
                 </div>
               </>

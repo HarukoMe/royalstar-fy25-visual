@@ -8,6 +8,7 @@ import {
   recomputeMastery,
 } from "./learner";
 import { dueConceptIds, nextNewUnitId, scheduleAfterRetrieval, scheduleWhy } from "./scheduler";
+import { conceptNeedsMoreEncoding } from "./coverage";
 import type {
   ActivityKind,
   AttentionSignal,
@@ -79,6 +80,7 @@ export type DebriefReport = {
   nextFocus: string;
   examReadiness: number;
   masteryVsExam: string;
+  coverageRemaining: number;
 };
 
 const sessionMinutesDefault = 25;
@@ -129,7 +131,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     const justRead = state.log.events.some((e) => e.type === "read" && e.conceptIds?.includes(lastIntro));
     const noRetrieval = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) === 0;
     if (justRead && noRetrieval) {
-      const item = pickItem(curr, lastIntro, state, { preferProduction: true, avoidId: state.lastItemId });
+      const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId });
       decide(state, now, "Immediate retrieval after encoding", ["testing effect", lastIntro], "retrieve");
       return retrieveAct(item, "encode");
     }
@@ -138,8 +140,18 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
   const due = dueConceptIds(state.learner, now).filter((id) => shouldReviewNow(state, id, now));
   const mixReviews = due.length > 0 && (state.retrieveCount % 3 === 2 || state.introducedThisSession.length >= 1);
 
+  if (lastIntro && conceptNeedsMoreEncoding(state.learner.concepts[lastIntro] ?? emptyState(lastIntro))) {
+    const st = state.learner.concepts[lastIntro];
+    const tried = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) > 0;
+    if (tried) {
+    const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId });
+    decide(state, now, "Stay on concept until retrieved, MCQ’d and attempted on more than one item", [lastIntro], "retrieve");
+    return retrieveAct(item, "encode");
+    }
+  }
+
   if (mixReviews && due[0]) {
-    const item = pickItem(curr, due[0], state, { preferProduction: true, avoidId: state.lastItemId });
+    const item = pickItem(curr, due[0], state, { preferMcq: true, avoidId: state.lastItemId });
     decide(state, now, "Due / at-risk concept interleaved", [`concept ${due[0]} due or at forgetting risk`], "retrieval");
     return retrieveAct(item, "due-review");
   }
@@ -170,7 +182,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
         speech: readSpeech(unit, false),
       };
     }
-    const item = pickItem(curr, cid, state, { preferProduction: true, avoidId: state.lastItemId });
+    const item = pickItem(curr, cid, state, { preferMcq: true, avoidId: state.lastItemId });
     decide(state, now, "Immediate retrieval after encoding", ["testing effect"], "retrieve");
     return retrieveAct(item, "encode");
   }
@@ -180,7 +192,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     .filter((c) => c.exposures > 0)
     .sort((a, b) => a.estimatedMastery - b.estimatedMastery)[0];
   if (weak) {
-    const item = pickItem(curr, weak.conceptId, state, { preferProduction: true, avoidId: state.lastItemId });
+    const item = pickItem(curr, weak.conceptId, state, { preferMcq: true, avoidId: state.lastItemId });
     decide(state, now, "Curriculum exhausted for new units — successive relearning of weakest", [weak.conceptId], "retrieve");
     return retrieveAct(item, "cumulative");
   }
@@ -226,8 +238,8 @@ function adapt(
     const other = concept?.confusedWith[0];
     if (other) {
       const item =
-        curr.items.find((i) => i.type === "distinction" || i.type === "compare") ||
-        pickItem(curr, cid!, state, { typeBias: ["compare", "distinction", "error-correction"] });
+        curr.items.find((i) => (i.type === "mcq" || i.type === "distinction") && i.conceptIds.includes(cid!) && i.misconception) ||
+        pickItem(curr, cid!, state, { preferMcq: true });
       decide(state, now, "Repeated error → distinction / misconception protocol", [signal, other], "retrieve");
       return retrieveAct(item, "misconception");
     }
@@ -296,7 +308,7 @@ function pickItem(
   curr: ReturnType<typeof loadCurriculum>,
   conceptId: string,
   state: EngineState,
-  opts: { preferProduction?: boolean; avoidId?: string; typeBias?: PracticeItem["type"][] }
+  opts: { preferProduction?: boolean; preferMcq?: boolean; avoidId?: string; typeBias?: PracticeItem["type"][] }
 ): PracticeItem {
   let pool = curr.items.filter((i) => i.conceptIds.includes(conceptId));
   if (opts.typeBias?.length) {
@@ -306,13 +318,24 @@ function pickItem(
   if (opts.preferProduction) {
     const prod = pool.filter((i) => !i.recognition);
     if (prod.length) pool = prod;
+  } else if (opts.preferMcq) {
+    const useProduction = state.retrieveCount > 0 && state.retrieveCount % 6 === 5;
+    const mcq = pool.filter((i) => i.type === "mcq" || i.type === "classify");
+    if (!useProduction && mcq.length) pool = mcq;
   }
   pool = pool.filter((i) => i.id !== opts.avoidId && i.id !== state.lastItemId);
+  const stats = state.learner.questionStats ?? {};
+  const unseen = pool.filter((i) => !stats[i.id] || stats[i.id].seen === 0);
+  if (unseen.length) pool = unseen;
+  else {
+    const failed = pool.filter((i) => stats[i.id] && !stats[i.id].lastCorrect);
+    if (failed.length) pool = failed;
+  }
+  if (!pool.length) pool = curr.items.filter((i) => i.conceptIds.includes(conceptId) && i.type === "mcq");
   if (!pool.length) pool = curr.items.filter((i) => i.conceptIds.includes(conceptId));
-  // Interleave formats: avoid repeating last type
   const lastType = curr.items.find((i) => i.id === state.lastItemId)?.type;
   const varied = pool.filter((i) => i.type !== lastType);
-  const chosen = (varied.length ? varied : pool)[state.retrieveCount % (varied.length ? varied.length : pool.length)];
+  const chosen = (varied.length ? varied : pool)[state.retrieveCount % Math.max(1, varied.length ? varied.length : pool.length)];
   return chosen ?? curr.items[0];
 }
 
@@ -410,7 +433,8 @@ export function commitGrade(state: EngineState, confidence: number, now = Date.n
       confidence,
       latencyMs,
       recognition: item.recognition,
-      confusedWith: confused,
+      confusedWith: confused ?? item.misconception,
+      item,
     });
     learner = res.model;
     errorClass = res.errorClass;
@@ -597,7 +621,8 @@ export function buildDebrief(state: EngineState, now = Date.now()): DebriefRepor
     nextFocus,
     examReadiness: examReadinessFor(state.learner),
     masteryVsExam:
-      "Mastery here is durable production after a gap. Exam-readiness is a separate overlay: syllabus 1.1 is ~36/100 of IF2, MCQ recognition under time. High fluency on one item five minutes ago does not move exam-readiness far.",
+      "Mastery is delayed production plus repeated retrieval. Exam-readiness is a separate overlay: syllabus 1.1 is ~36/100 of IF2. Coverage stages (seen / recognised / explained / applied / held after a gap) are not collapsed into one percentage.",
+    coverageRemaining: Object.values(state.learner.concepts).filter((c) => c.exposures === 0).length,
   };
 }
 

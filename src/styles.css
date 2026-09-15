@@ -125,4 +125,34 @@ textarea {
 
 .idle-veil { position: fixed; inset: 0; pointer-events: none; }
 
-.audio-dot { font-size: 0.8rem; color: var(--muted); }
+.view-nav { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1.4rem; }
+.view-nav button { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
+.cov { display: block; font-style: normal; font-size: 0.78rem; color: var(--muted); }
+.graph-list { line-height: 1.55; }
+.mcq-options { margin-top: 0.6rem; }
+.mcq-opt {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  width: 100%;
+  border-radius: 0.55rem !important;
+  padding: 0.85rem 1rem !important;
+}
+.mcq-opt .letter {
+  font-family: var(--display);
+  min-width: 1.4rem;
+  color: var(--muted);
+}
+.mcq-opt.selected { border-color: var(--ink) !important; background: #e8dcc6 !important; }
+.mcq-opt.right { border-color: var(--ok) !important; background: #ecf4d3 !important; }
+.mcq-opt.wrong { border-color: var(--warn) !important; background: #f8e6d4 !important; }
+.mcq-feedback { margin-top: 1rem; }
+.mcq-feedback details { margin-top: 0.6rem; color: var(--muted); }
+.exam-stage .card { background: #f3eee4; }
+@media (max-width: 640px) {
+  .card { padding: 1.4rem 1rem 1.2rem; }
+  h2 { font-size: 1.45rem; }
+  .topbar { padding: 0.8rem 1rem; flex-wrap: wrap; gap: 0.4rem; }
+  .atlas { padding: 0 1rem 2rem; }
+  .stage { padding: 0.6rem 0.7rem 1.6rem; }
+}

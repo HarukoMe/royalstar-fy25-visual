@@ -1,20 +1,15 @@
 import type { LearnerModel, SessionLog } from "./engine/types";
-import { createLearner } from "./engine/learner";
+import { createLearner, hydrateLearner } from "./engine/learner";
 
-const LKEY = "if2-conduct-learner-v1";
+const LKEY = "if2-conduct-learner-v2";
+const LKEY_OLD = "if2-conduct-learner-v1";
 const SKEY = "if2-conduct-sessions-v1";
 
 export function loadLearner(): LearnerModel {
   try {
-    const raw = localStorage.getItem(LKEY);
+    const raw = localStorage.getItem(LKEY) || localStorage.getItem(LKEY_OLD);
     if (!raw) return createLearner();
-    const parsed = JSON.parse(raw) as LearnerModel;
-    const fresh = createLearner();
-    return {
-      ...fresh,
-      ...parsed,
-      concepts: { ...fresh.concepts, ...parsed.concepts },
-    };
+    return hydrateLearner(JSON.parse(raw) as LearnerModel);
   } catch {
     return createLearner();
   }
@@ -40,5 +35,6 @@ export function saveSession(log: SessionLog) {
 
 export function resetLearner() {
   localStorage.removeItem(LKEY);
+  localStorage.removeItem(LKEY_OLD);
   localStorage.removeItem(SKEY);
 }

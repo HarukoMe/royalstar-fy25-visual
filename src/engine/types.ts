@@ -103,8 +103,62 @@ export type PracticeItem = {
   expected: string[];
   rubric: string;
   whyWrong?: string[];
+  whyCorrect?: string;
   sources: Provenance[];
   examStyle?: boolean;
+  difficulty?: 1 | 2 | 3 | 4 | 5;
+  questionKind?: "knowledge" | "definition" | "distinction" | "scenario" | "which-correct" | "cumulative" | "cloze" | "production";
+  cognitive?: "recognition" | "understanding" | "distinction" | "application";
+  misconception?: string;
+  chapter?: ChapterId;
+  lo?: string;
+  shuffle?: boolean;
+};
+
+export type CoverageFlags = {
+  encountered: boolean;
+  introduced: boolean;
+  explained: boolean;
+  retrieved: boolean;
+  applied: boolean;
+  revisitedAfterDelay: boolean;
+  recognized: boolean;
+  explainedInOwnWords: boolean;
+  mcqReady: boolean;
+};
+
+export type ConceptState = {
+  conceptId: string;
+  exposures: number;
+  successfulRetrievals: number;
+  failedRetrievals: number;
+  productionSuccesses: number;
+  recognitionSuccesses: number;
+  mcqAttempts: number;
+  mcqCorrect: number;
+  recallAttempts: number;
+  recallCorrect: number;
+  applicationAttempts: number;
+  applicationCorrect: number;
+  itemsAttempted: string[];
+  firstSeenAt: number | null;
+  firstSuccessAt: number | null;
+  explainedAt: number | null;
+  partialFlags: number;
+  confidentErrors: number;
+  lastConfidence: number | null;
+  lastOutcome: "success" | "fail" | "partial" | null;
+  lastSeenAt: number | null;
+  lastSuccessAt: number | null;
+  lastFailAt: number | null;
+  latenciesMs: number[];
+  confusedWithHits: Record<string, number>;
+  estimatedMastery: number;
+  accessibility: number;
+  nextDueAt: number | null;
+  intervalDays: number;
+  successiveCriterionHits: number;
+  delayedSuccesses: number;
 };
 
 export type ActivityKind =
@@ -133,37 +187,33 @@ export type ErrorClass = "slip" | "gap" | "misconception" | "confident-error" | 
 
 export type RetrievalKind = "recognition" | "production";
 
-export type ConceptState = {
-  conceptId: string;
-  exposures: number;
-  successfulRetrievals: number;
-  failedRetrievals: number;
-  productionSuccesses: number;
-  recognitionSuccesses: number;
-  partialFlags: number;
-  confidentErrors: number;
-  lastConfidence: number | null;
-  lastOutcome: "success" | "fail" | "partial" | null;
-  lastSeenAt: number | null;
-  lastSuccessAt: number | null;
-  lastFailAt: number | null;
-  latenciesMs: number[];
-  confusedWithHits: Record<string, number>;
-  estimatedMastery: number;
-  accessibility: number;
-  nextDueAt: number | null;
-  intervalDays: number;
-  successiveCriterionHits: number;
+export type QuestionStat = {
+  seen: number;
+  correct: number;
+  lastAt: number;
+  lastCorrect: boolean;
+};
+
+export type ExamAttempt = {
+  id: string;
+  at: number;
+  mode: "drill" | "chapter" | "mixed" | "full";
+  n: number;
+  correct: number;
+  chapter?: ChapterId;
+  byConcept: Record<string, { n: number; correct: number }>;
 };
 
 export type LearnerModel = {
-  version: 1;
+  version: 2;
   createdAt: number;
   concepts: Record<string, ConceptState>;
   sessionCount: number;
   recentAccuracy: number[];
   revealCountByFact: Record<string, number>;
   examReadiness: Record<string, number>;
+  questionStats: Record<string, QuestionStat>;
+  examAttempts: ExamAttempt[];
 };
 
 export type PedagogicalDecision = {
@@ -198,3 +248,4 @@ export type SpeechAct = {
   text: string;
   interruptible: boolean;
 };
+

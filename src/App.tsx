@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Atlas } from "./ui/Atlas";
 import { Debrief } from "./ui/Debrief";
+import { ExamPractice } from "./ui/ExamPractice";
 import { Focus } from "./ui/Focus";
 import { buildDebrief, startSession, type DebriefReport, type EngineState } from "./engine/session";
 import { loadLearner, resetLearner, saveLearner } from "./storage";
 import "./styles.css";
 
 export function App() {
-  const [mode, setMode] = useState<"atlas" | "focus" | "debrief">("atlas");
+  const [mode, setMode] = useState<"atlas" | "focus" | "debrief" | "exam">("atlas");
   const [learner, setLearner] = useState(() => loadLearner());
   const [engine, setEngine] = useState<EngineState | null>(null);
   const [report, setReport] = useState<DebriefReport | null>(null);
@@ -46,6 +47,9 @@ export function App() {
             <button className="ghost" onClick={() => setMode("atlas")}>
               Model
             </button>
+            <button className="ghost" onClick={() => setMode("exam")}>
+              Exam
+            </button>
             <button onClick={begin}>Focus</button>
           </nav>
         )}
@@ -55,11 +59,15 @@ export function App() {
         <Atlas
           learner={learner}
           onStart={begin}
+          onExam={() => setMode("exam")}
           onReset={() => {
             resetLearner();
             setLearner(loadLearner());
           }}
         />
+      )}
+      {mode === "exam" && (
+        <ExamPractice learner={learner} onLearner={setLearner} onClose={() => setMode("atlas")} />
       )}
       {mode === "focus" && engine && (
         <Focus

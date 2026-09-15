@@ -1,6 +1,6 @@
 import type { AuthoredFact } from "../engine/types";
 
-const kf = (chapter: 1 | 2 | 3 | 4 | 5 | 6, section: string, page: string) => ({
+export const kf = (chapter: 1 | 2 | 3 | 4 | 5 | 6, section: string, page: string) => ({
   kind: "key-facts" as const,
   chapter,
   section,
@@ -8,7 +8,7 @@ const kf = (chapter: 1 | 2 | 3 | 4 | 5 | 6, section: string, page: string) => ({
   locator: `IF2 2026 Key Facts ch.${chapter} p.${page} — ${section}`,
 });
 
-const st = (section: string, page: string) => ({
+export const st = (section: string, page: string) => ({
   kind: "study-text" as const,
   chapter: 1 as const,
   section,
@@ -16,14 +16,14 @@ const st = (section: string, page: string) => ({
   locator: `IF2 2026 Study Text ch.1 p.${page} — ${section}`,
 });
 
-const sy = (outcome: string, note: string) => ({
+export const sy = (outcome: string, note: string) => ({
   kind: "syllabus" as const,
   section: outcome,
   locator: `IF2 2026 syllabus ${outcome}`,
   note,
 });
 
-const eg = (q: string, lo: string) => ({
+export const eg = (q: string, lo: string) => ({
   kind: "exam-guide" as const,
   section: lo,
   locator: `IF2 2026 Examination Guide specimen Q${q} (LO ${lo})`,

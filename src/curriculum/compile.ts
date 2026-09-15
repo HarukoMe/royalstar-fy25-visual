@@ -1,12 +1,13 @@
+import type { AuthoredFact, Concept, LearningUnit, PracticeItem, Provenance } from "../engine/types";
 import { FACTS, CHAPTER_META } from "./facts";
-import type {
-  AuthoredFact,
-  ChapterId,
-  Concept,
-  LearningUnit,
-  PracticeItem,
-  Provenance,
-} from "../engine/types";
+import { MORE_FACTS } from "./facts-more";
+import { DEPTH_FACTS } from "./facts-depth";
+import { QUESTIONS, type AuthoredQuestion } from "./questions";
+import { QUESTIONS_MORE } from "./questions-more";
+import type { ChapterId } from "../engine/types";
+
+export const ALL_FACTS: AuthoredFact[] = [...FACTS, ...MORE_FACTS, ...DEPTH_FACTS];
+export const ALL_QUESTIONS: AuthoredQuestion[] = [...QUESTIONS, ...QUESTIONS_MORE];
 
 function kernels(claim: string): string[] {
   const out: string[] = [];
@@ -36,7 +37,7 @@ function readingFor(fact: AuthoredFact): string {
 
 export function compileConcepts(): Concept[] {
   const map = new Map<string, Concept>();
-  for (const f of FACTS) {
+  for (const f of ALL_FACTS) {
     const existing = map.get(f.conceptId);
     const sources = f.sources;
     if (!existing) {
@@ -74,7 +75,7 @@ function mergeSources(a: Provenance[], b: Provenance[]): Provenance[] {
 export function compileUnits(): LearningUnit[] {
   const concepts = compileConcepts();
   const byConcept = new Map<string, AuthoredFact[]>();
-  for (const f of FACTS) {
+  for (const f of ALL_FACTS) {
     const arr = byConcept.get(f.conceptId) ?? [];
     arr.push(f);
     byConcept.set(f.conceptId, arr);
@@ -102,15 +103,15 @@ export function compileUnits(): LearningUnit[] {
   }
   return units.sort((a, b) => {
     if (a.chapter !== b.chapter) return a.chapter - b.chapter;
-    const fa = FACTS.findIndex((f) => f.conceptId === a.conceptIds[0]);
-    const fb = FACTS.findIndex((f) => f.conceptId === b.conceptIds[0]);
+    const fa = ALL_FACTS.findIndex((f) => f.conceptId === a.conceptIds[0]);
+    const fb = ALL_FACTS.findIndex((f) => f.conceptId === b.conceptIds[0]);
     return fa - fb;
   });
 }
 
 function comparisonFor(conceptId: string, facts: AuthoredFact[]): LearningUnit["comparisonTable"] {
-  if (conceptId !== "motor-cover-levels" && conceptId !== "motor-tpo") return undefined;
   if (!facts.some((f) => f.id === "m-four-levels")) return undefined;
+  if (conceptId !== "motor-cover-levels") return undefined;
   return {
     caption: "Private motor cover compared (IF2 study text / key facts)",
     headers: ["Level", "Own vehicle", "Third party injury", "Third party property (private car)"],
@@ -123,9 +124,38 @@ function comparisonFor(conceptId: string, facts: AuthoredFact[]): LearningUnit["
   };
 }
 
+function questionToItem(q: AuthoredQuestion): PracticeItem {
+  return {
+    id: q.id,
+    type: "mcq",
+    conceptIds: q.conceptIds,
+    factIds: q.factIds,
+    skill: q.cognitive === "application" ? "apply" : q.cognitive === "understanding" || q.cognitive === "distinction" ? "understand" : "know",
+    recognition: true,
+    prompt: q.stem,
+    options: [...q.options],
+    correctIndex: q.correct,
+    expected: [q.options[q.correct]],
+    rubric: q.whyCorrect,
+    whyCorrect: q.whyCorrect,
+    whyWrong: [...q.whyWrong],
+    sources: q.sources,
+    examStyle: q.examStyle,
+    difficulty: q.difficulty,
+    questionKind: q.kind,
+    cognitive: q.cognitive,
+    misconception: q.misconception,
+    chapter: q.chapter,
+    lo: q.lo,
+    shuffle: true,
+  };
+}
+
 export function compileItems(): PracticeItem[] {
-  const items: PracticeItem[] = [];
-  for (const f of FACTS) {
+  const items: PracticeItem[] = ALL_QUESTIONS.map(questionToItem);
+  const stems = new Set(items.map((i) => i.prompt.trim().toLowerCase()));
+
+  for (const f of ALL_FACTS) {
     const { prompt, answers } = clozePrompt(f.claim);
     if (answers.length) {
       items.push({
@@ -139,6 +169,10 @@ export function compileItems(): PracticeItem[] {
         expected: answers,
         rubric: plain(f.claim),
         sources: f.sources,
+        questionKind: "cloze",
+        cognitive: "understanding",
+        chapter: f.chapter,
+        lo: "1.1",
       });
       items.push({
         id: `recall-${f.id}`,
@@ -151,6 +185,10 @@ export function compileItems(): PracticeItem[] {
         expected: answers,
         rubric: plain(f.claim),
         sources: f.sources,
+        questionKind: "production",
+        cognitive: "understanding",
+        chapter: f.chapter,
+        lo: "1.1",
       });
     }
     if (f.prediction) {
@@ -165,6 +203,9 @@ export function compileItems(): PracticeItem[] {
         expected: answers.length ? answers : [plain(f.claim)],
         rubric: plain(f.claim),
         sources: f.sources,
+        questionKind: "production",
+        chapter: f.chapter,
+        lo: "1.1",
       });
     }
     if (f.teachBackCue) {
@@ -179,25 +220,38 @@ export function compileItems(): PracticeItem[] {
         expected: answers.length ? answers : [plain(f.claim)],
         rubric: plain(f.claim),
         sources: f.sources,
+        questionKind: "production",
+        chapter: f.chapter,
+        lo: "1.1",
       });
     }
     if (f.mcq) {
-      items.push({
-        id: `mcq-${f.id}`,
-        type: "mcq",
-        conceptIds: [f.conceptId],
-        factIds: [f.id],
-        skill: f.skill,
-        recognition: true,
-        prompt: f.mcq.stem,
-        options: [...f.mcq.options],
-        correctIndex: f.mcq.correct,
-        expected: [f.mcq.options[f.mcq.correct]],
-        rubric: f.mcq.whyWrong[f.mcq.correct],
-        whyWrong: [...f.mcq.whyWrong],
-        sources: f.sources,
-        examStyle: f.sources.some((s) => s.kind === "exam-guide"),
-      });
+      const stem = f.mcq.stem.trim().toLowerCase();
+      if (!stems.has(stem)) {
+        stems.add(stem);
+        items.push({
+          id: `mcq-${f.id}`,
+          type: "mcq",
+          conceptIds: [f.conceptId],
+          factIds: [f.id],
+          skill: f.skill,
+          recognition: true,
+          prompt: f.mcq.stem,
+          options: [...f.mcq.options],
+          correctIndex: f.mcq.correct,
+          expected: [f.mcq.options[f.mcq.correct]],
+          rubric: f.mcq.whyWrong[f.mcq.correct],
+          whyCorrect: f.mcq.whyWrong[f.mcq.correct],
+          whyWrong: [...f.mcq.whyWrong],
+          sources: f.sources,
+          examStyle: f.sources.some((s) => s.kind === "exam-guide"),
+          questionKind: "knowledge",
+          cognitive: "recognition",
+          chapter: f.chapter,
+          lo: "1.1",
+          shuffle: true,
+        });
+      }
       items.push({
         id: `why-${f.id}`,
         type: "why-wrong",
@@ -209,6 +263,9 @@ export function compileItems(): PracticeItem[] {
         expected: f.mcq.whyWrong.filter((_, i) => i !== f.mcq!.correct),
         rubric: f.mcq.whyWrong.filter((_, i) => i !== f.mcq!.correct).join(" / "),
         sources: f.sources,
+        questionKind: "production",
+        chapter: f.chapter,
+        lo: "1.1",
       });
     }
     if (f.scenario) {
@@ -223,6 +280,10 @@ export function compileItems(): PracticeItem[] {
         expected: [f.scenario.answer],
         rubric: f.scenario.answer,
         sources: f.sources,
+        questionKind: "production",
+        cognitive: "application",
+        chapter: f.chapter,
+        lo: "1.1",
       });
     }
     if (f.kind === "exclusion") {
@@ -237,6 +298,9 @@ export function compileItems(): PracticeItem[] {
         expected: kernels(f.claim).length ? kernels(f.claim) : [plain(f.claim)],
         rubric: plain(f.claim),
         sources: f.sources,
+        questionKind: "production",
+        chapter: f.chapter,
+        lo: "1.1",
       });
     }
   }
@@ -253,7 +317,11 @@ export function compileItems(): PracticeItem[] {
     expected: ["£1.2 million", "£20 million", "off road", "territorial", "driving other"],
     rubric:
       "TPO usually adds off-road/territorial cover, £20m TPPD for private cars (vs £1.2m RTA), driving-other-cars (often), wider insured persons and defence costs.",
-    sources: FACTS.find((f) => f.id === "m-tpo-extras")!.sources,
+    sources: ALL_FACTS.find((f) => f.id === "m-tpo-extras")!.sources,
+    questionKind: "production",
+    cognitive: "distinction",
+    chapter: 1,
+    lo: "1.1",
   });
   items.push({
     id: "compare-tpft-comp",
@@ -265,7 +333,10 @@ export function compileItems(): PracticeItem[] {
     prompt: "What is the main extra that comprehensive adds over TPFT?",
     expected: ["accidental", "malicious", "all risks"],
     rubric: "Accidental and malicious damage to the insured’s car, on an all-risks-of-own-damage basis with listed exclusions.",
-    sources: FACTS.find((f) => f.id === "m-comp")!.sources,
+    sources: ALL_FACTS.find((f) => f.id === "m-comp")!.sources,
+    questionKind: "production",
+    chapter: 1,
+    lo: "1.1",
   });
   items.push({
     id: "compare-el-pl",
@@ -277,7 +348,11 @@ export function compileItems(): PracticeItem[] {
     prompt: "A hotel chef burns a guest and, separately, a waiter. Which liability class responds to each, according to IF2?",
     expected: ["public liability", "employers’ liability", "employee"],
     rubric: "Guest: public liability. Waiter/employee: employers’ liability.",
-    sources: FACTS.find((f) => f.id === "l-pl")!.sources,
+    sources: ALL_FACTS.find((f) => f.id === "l-pl")!.sources,
+    questionKind: "production",
+    cognitive: "distinction",
+    chapter: 6,
+    lo: "1.1",
   });
   items.push({
     id: "classify-product-family",
@@ -292,8 +367,13 @@ export function compileItems(): PracticeItem[] {
     correctIndex: 1,
     expected: ["Extended warranty"],
     rubric: "Specimen Q36: extended warranty.",
-    sources: FACTS.find((f) => f.id === "l-ew")!.sources,
+    sources: ALL_FACTS.find((f) => f.id === "l-ew")!.sources,
     examStyle: true,
+    questionKind: "scenario",
+    cognitive: "application",
+    chapter: 6,
+    lo: "1.1",
+    shuffle: true,
   });
   items.push({
     id: "summary-motor-levels",
@@ -305,10 +385,86 @@ export function compileItems(): PracticeItem[] {
     prompt: "In one sentence, list the four private motor cover levels from narrowest to widest.",
     expected: ["RTA", "third party only", "TPFT", "comprehensive"],
     rubric: "RTA only, TPO, TPFT, comprehensive.",
-    sources: FACTS.find((f) => f.id === "m-four-levels")!.sources,
+    sources: ALL_FACTS.find((f) => f.id === "m-four-levels")!.sources,
+    questionKind: "production",
+    chapter: 1,
+    lo: "1.1",
   });
 
-  return items;
+  const withCoverage = ensureMcqCoverage(items, compileConcepts(), ALL_FACTS);
+  return withCoverage;
+}
+
+function distractorsFor(c: Concept, facts: AuthoredFact[], correct: string): string[] {
+  const ranked = [
+    ...c.confusedWith.flatMap((id) => facts.filter((f) => f.conceptId === id)),
+    ...facts.filter((f) => f.conceptId !== c.id && f.chapter === c.chapter),
+    ...facts.filter((f) => f.conceptId !== c.id),
+  ];
+  const unique: string[] = [];
+  for (const f of ranked) {
+    const d = clip(plain(f.claim), 140);
+    if (!d || d === correct || unique.includes(d)) continue;
+    unique.push(d);
+    if (unique.length === 3) break;
+  }
+  return unique;
+}
+
+function ensureMcqCoverage(items: PracticeItem[], concepts: Concept[], facts: AuthoredFact[]): PracticeItem[] {
+  const extra: PracticeItem[] = [];
+  const stems = new Set(items.map((i) => i.prompt.trim().toLowerCase()));
+  for (const c of concepts) {
+    const existing = items.filter((i) => i.type === "mcq" && i.conceptIds.includes(c.id)).length + extra.filter((i) => i.conceptIds.includes(c.id)).length;
+    const conceptFacts = facts.filter((f) => f.conceptId === c.id);
+    for (let n = existing; n < 2; n++) {
+      const fact = conceptFacts[n % Math.max(1, conceptFacts.length)] ?? facts.find((f) => f.conceptId === c.id);
+      if (!fact) continue;
+      const correct = clip(plain(fact.claim), 140);
+      const unique = distractorsFor(c, facts, correct);
+      if (unique.length < 3) continue;
+      const prompt =
+        n === 0
+          ? `Which statement about “${c.title}” is correct according to the IF2 materials?`
+          : `According to IF2, which of the following is true of ${c.title}?`;
+      const stemKey = prompt.trim().toLowerCase();
+      const finalPrompt = stems.has(stemKey) ? `${prompt} (${fact.id})` : prompt;
+      stems.add(finalPrompt.trim().toLowerCase());
+      extra.push({
+        id: `mcq-auto-${c.id}-${n}`,
+        type: "mcq",
+        conceptIds: [c.id],
+        factIds: [fact.id],
+        skill: fact.skill,
+        recognition: true,
+        prompt: finalPrompt,
+        options: [correct, unique[0], unique[1], unique[2]],
+        correctIndex: 0,
+        expected: [correct],
+        rubric: fact.sources[0]?.locator ?? correct,
+        whyCorrect: `${correct} (${fact.sources.map((s) => s.locator).join("; ")})`,
+        whyWrong: [
+          "This is the sourced statement for this concept.",
+          `A neighbouring IF2 claim (${unique[0].slice(0, 48)}…) — not this concept’s rule.`,
+          `A neighbouring IF2 claim (${unique[1].slice(0, 48)}…) — not this concept’s rule.`,
+          `A neighbouring IF2 claim (${unique[2].slice(0, 48)}…) — not this concept’s rule.`,
+        ],
+        sources: fact.sources,
+        questionKind: "which-correct",
+        cognitive: "understanding",
+        chapter: c.chapter,
+        lo: "1.1",
+        shuffle: true,
+        difficulty: 2,
+      });
+    }
+  }
+  return [...items, ...extra];
+}
+
+function clip(s: string, n: number) {
+  const t = s.replace(/\s+/g, " ").trim();
+  return t.length <= n ? t : t.slice(0, n - 1) + "…";
 }
 
 function invertClaim(text: string): string {
@@ -319,12 +475,15 @@ export function curriculumStats() {
   const concepts = compileConcepts();
   const units = compileUnits();
   const items = compileItems();
-  const byCh = (n: ChapterId) => FACTS.filter((f) => f.chapter === n).length;
+  const byCh = (n: ChapterId) => ALL_FACTS.filter((f) => f.chapter === n).length;
+  const mcq = items.filter((i) => i.type === "mcq");
   return {
-    facts: FACTS.length,
+    facts: ALL_FACTS.length,
     concepts: concepts.length,
     units: units.length,
     items: items.length,
+    mcq: mcq.length,
+    examStyleMcq: mcq.filter((i) => i.examStyle).length,
     factsByChapter: {
       1: byCh(1),
       2: byCh(2),
@@ -332,6 +491,14 @@ export function curriculumStats() {
       4: byCh(4),
       5: byCh(5),
       6: byCh(6),
+    },
+    conceptsByChapter: {
+      1: concepts.filter((c) => c.chapter === 1).length,
+      2: concepts.filter((c) => c.chapter === 2).length,
+      3: concepts.filter((c) => c.chapter === 3).length,
+      4: concepts.filter((c) => c.chapter === 4).length,
+      5: concepts.filter((c) => c.chapter === 5).length,
+      6: concepts.filter((c) => c.chapter === 6).length,
     },
     chapters: CHAPTER_META,
     syllabus: {
@@ -345,11 +512,12 @@ export function curriculumStats() {
 }
 
 export type Curriculum = {
-  facts: typeof FACTS;
+  facts: AuthoredFact[];
   factById: Record<string, AuthoredFact>;
   concepts: Concept[];
   units: LearningUnit[];
   items: PracticeItem[];
+  questions: AuthoredQuestion[];
   stats: ReturnType<typeof curriculumStats>;
 };
 
@@ -357,12 +525,17 @@ let _cache: Curriculum | null = null;
 export function loadCurriculum(): Curriculum {
   if (_cache) return _cache;
   _cache = {
-    facts: FACTS,
-    factById: Object.fromEntries(FACTS.map((f) => [f.id, f])),
+    facts: ALL_FACTS,
+    factById: Object.fromEntries(ALL_FACTS.map((f) => [f.id, f])),
     concepts: compileConcepts(),
     units: compileUnits(),
     items: compileItems(),
+    questions: ALL_QUESTIONS,
     stats: curriculumStats(),
   };
   return _cache;
+}
+
+export function resetCurriculumCache() {
+  _cache = null;
 }
