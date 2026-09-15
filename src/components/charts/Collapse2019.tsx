@@ -69,6 +69,9 @@ export function Collapse2019() {
     setBasis('gross');
   };
 
+  const formatted = exact(shown);
+  const [head, ...tail] = formatted.split(',');
+
   return (
     <div ref={trackRef} className={styles.track}>
       <div className={styles.sticky}>
@@ -96,13 +99,25 @@ export function Collapse2019() {
           <p className={styles.kicker}>Accident year 2019 · Note 13</p>
           <p
             className={styles.amount}
+            data-stacked={isNet ? 'false' : 'true'}
             style={{
               color: isNet ? roleColor('retained', 'high') : roleColor('gross'),
-              fontSize: `${lerp(16.5, 6.2, eased)}vw`,
             }}
           >
-            <span className={styles.currency}>$</span>
-            {exact(shown)}
+            {isNet ? (
+              <>
+                <span className={styles.currency}>$</span>
+                {formatted}
+              </>
+            ) : (
+              <>
+                <span className={styles.row}>
+                  <span className={styles.currency}>$</span>
+                  <span className={styles.lead}>{head}</span>
+                </span>
+                {tail.length > 0 && <span className={styles.rest}>{tail.join(',')}</span>}
+              </>
+            )}
           </p>
           <p className={styles.basisLabel}>{isNet ? 'Net of reinsurance' : 'Gross of reinsurance'}</p>
           <dl className={styles.meta}>
