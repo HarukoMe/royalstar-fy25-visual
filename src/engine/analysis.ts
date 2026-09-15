@@ -241,7 +241,7 @@ export const largestPurchases = (rows: LedgerTransaction[], n = 12): LedgerTrans
     .slice(0, n);
 
 export const recurringCandidates = (rows: LedgerTransaction[]): RecurringCandidate[] => {
-  const merchants = merchantAgg(rows).filter((m) => m.count >= 2);
+  const merchants = merchantAgg(rows).filter((m) => m.count >= 2 && (m.months.length >= 2 || m.category === "Subscriptions"));
   return merchants
     .map((m) => {
       const tx = rows.filter((r) => r.merchant === m.merchant && r.direction === "out" && r.countsAsMerchantSpend);
