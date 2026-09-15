@@ -1,3 +1,11 @@
+# RoyalStar FY2025 (this branch)
+
+Vite currently boots the cinematic FY2025 report (`src/App.tsx` from this branch).
+
+`main` also ships **Soundings**, a personal financial control room. Merging `main` brought its engine, sanitized ledger data, tests, extract script, and the Soundings README below. The two products cannot share `index.html`, `src/App.tsx`, and `src/main.tsx` without an explicit split (routes or packages). That product decision is still open.
+
+---
+
 # Soundings
 
 Private personal financial control room. Not a bank dashboard.

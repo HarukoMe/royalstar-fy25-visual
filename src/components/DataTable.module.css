@@ -1,0 +1,79 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 0.78rem;
+}
+
+.caption {
+  text-align: left;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-bottom: 0.8rem;
+}
+
+.table thead th {
+  font-weight: 400;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 0.9rem 0.6rem;
+  border-bottom: 1px solid var(--hairline-strong);
+  white-space: nowrap;
+}
+
+.table tbody th {
+  font-weight: 400;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+}
+
+.table tbody td,
+.table tbody th {
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.table tbody tr:hover td,
+.table tbody tr:hover th {
+  background: rgb(255 255 255 / 3%);
+  color: var(--ink);
+}
+
+.table tfoot td,
+.table tfoot th {
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid var(--hairline-strong);
+  color: var(--ink);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.table [data-align='right'] {
+  text-align: right;
+}
+
+.table [data-align='left'] {
+  text-align: left;
+}
+
+.dense tbody td,
+.dense tbody th {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+}
+
+.table :global(.pos) {
+  color: var(--dir-up);
+}
+
+.table :global(.neg) {
+  color: var(--dir-down);
+}

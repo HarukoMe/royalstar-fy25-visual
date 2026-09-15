@@ -1,0 +1,312 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35em;
+  vertical-align: baseline;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  line-height: 1.3;
+  max-width: 24ch;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.25em;
+  padding: 0;
+  text-align: left;
+  line-height: 1;
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 350;
+  letter-spacing: -0.02em;
+  transition: filter var(--dur-fast) var(--ease-out);
+}
+
+/* Provenance affordances. Reported figures carry a fine dotted rule;
+   calculated figures a dashed rule and an ƒ marker. */
+.wrap[data-tier='reported'] .value {
+  border-bottom: 1px dotted rgb(141 160 184 / 45%);
+  padding-bottom: 0.08em;
+}
+
+.wrap[data-tier='calculated'] .value {
+  border-bottom: 1px dashed rgb(79 179 196 / 55%);
+  padding-bottom: 0.08em;
+}
+
+.wrap[data-provenance='on'][data-tier='reported'] .value {
+  background: rgb(141 160 184 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(141 160 184 / 35%);
+}
+
+.wrap[data-provenance='on'][data-tier='calculated'] .value {
+  background: rgb(79 179 196 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(79 179 196 / 40%);
+}
+
+.trigger:hover .value,
+.trigger:focus-visible .value {
+  filter: brightness(1.18);
+}
+
+.fx {
+  font-family: var(--font-mono);
+  font-size: 0.55em;
+  color: var(--tier-calculated);
+  opacity: 0.7;
+  transform: none;
+  margin-left: 0.15em;
+}
+
+/* Sizes */
+.hero .value {
+  font-family: var(--font-mono);
+  font-size: var(--step-4);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.display .value {
+  font-family: var(--font-mono);
+  font-size: var(--step-2);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.large .value {
+  font-size: var(--step-1);
+}
+
+.body .value {
+  font-size: var(--step-0);
+}
+
+.inline {
+  display: inline;
+}
+
+.inline .value {
+  font-size: 0.95em;
+}
+
+/* Delta chip — direction colours are used here and only here. */
+.delta {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.delta[data-dir='up'] {
+  color: var(--dir-up);
+}
+
+.delta[data-dir='down'] {
+  color: var(--dir-down);
+}
+
+.delta em {
+  font-style: normal;
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
+}
+
+/* Provenance card */
+.tooltip {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 0.6rem);
+  left: 0;
+  width: min(26rem, 84vw);
+  pointer-events: none;
+  animation: rise var(--dur-base) var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card {
+  display: block;
+  padding: 1rem 1.15rem 1.15rem;
+  background: rgb(20 18 15 / 96%);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 3px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 55%);
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.cardTier {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.2em 0.6em;
+  border-radius: 2px;
+  margin-bottom: 0.7rem;
+}
+
+.cardTier[data-tier='reported'] {
+  color: var(--tier-reported);
+  border: 1px solid rgb(141 160 184 / 40%);
+}
+
+.cardTier[data-tier='calculated'] {
+  color: var(--tier-calculated);
+  border: 1px solid rgb(79 179 196 / 45%);
+}
+
+.cardLabel {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+
+.cardValue {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--ink);
+  margin-bottom: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardSource {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}
+
+.cardPage {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  margin-top: 0.25rem;
+}
+
+.cardDefinition {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  line-height: 1.55;
+  margin-bottom: 0.6rem;
+}
+
+.cardExpression {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--tier-calculated);
+  padding: 0.5em 0.65em;
+  background: rgb(79 179 196 / 8%);
+  border-left: 2px solid rgb(79 179 196 / 45%);
+  line-height: 1.5;
+  margin-bottom: 0.6rem;
+}
+
+.cardInputs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cardInputs li {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  display: grid;
+  gap: 0.1rem;
+  padding-left: 0.8em;
+  border-left: 1px solid var(--hairline);
+}
+
+.cardInputs em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--ink-faint);
+}
+
+/* Tile */
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.5rem 1.5rem 1.6rem;
+  position: relative;
+  background: linear-gradient(180deg, rgb(19 30 48 / 55%), rgb(10 18 32 / 25%));
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The role rule is the only colour on a tile, so gold appears on exactly the
+   figures RoyalStar retains. */
+.tile::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--tile-rule);
+  opacity: 0.85;
+}
+
+.tileEyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.tileLabel {
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  line-height: 1.45;
+  max-width: 26ch;
+}
+
+.tile .wrap {
+  gap: 0.5rem;
+}
+
+@media (max-width: 40rem) {
+  .hero .value {
+    font-size: var(--step-6);
+  }
+
+  .display .value {
+    font-size: var(--step-4);
+  }
+
+  .tooltip {
+    width: min(22rem, 90vw);
+  }
+}

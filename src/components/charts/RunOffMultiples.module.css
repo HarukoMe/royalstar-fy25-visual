@@ -1,0 +1,91 @@
+.svg {
+  overflow: visible;
+}
+
+.card {
+  opacity: 0;
+  cursor: crosshair;
+}
+
+.svg[data-in='true'] .card {
+  animation: cardIn 700ms var(--ease-out) both;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cardBg {
+  fill: rgb(19 30 48 / 42%);
+  stroke: rgb(255 255 255 / 7%);
+  stroke-width: 1;
+  transition:
+    fill var(--dur-fast) var(--ease-out),
+    stroke var(--dur-fast) var(--ease-out);
+}
+
+.card[data-hot='true'] .cardBg {
+  fill: rgb(27 41 66 / 70%);
+  stroke: rgb(255 255 255 / 18%);
+}
+
+.cardYear {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.baseline {
+  stroke: rgb(255 255 255 / 12%);
+  stroke-width: 1;
+  stroke-dasharray: 1 3;
+}
+
+.devPair {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.devSep {
+  fill: var(--ink-faint);
+}
+
+.cardFoot {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  fill: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.legendRow {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.note {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  line-height: 1.6;
+  max-width: 46rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svg[data-in='true'] .card {
+    animation: none;
+  }
+
+  .card {
+    opacity: 1;
+  }
+}

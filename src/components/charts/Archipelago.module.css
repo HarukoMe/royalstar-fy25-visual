@@ -1,0 +1,38 @@
+.wrap {
+  display: grid;
+  gap: 1rem;
+}
+
+.readout {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.readoutValue {
+  font-family: var(--font-mono);
+  font-size: var(--step-3);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.readoutMeta {
+  display: flex;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.readoutMeta [data-dir='up'] {
+  color: var(--dir-up);
+}
+
+.readoutMeta [data-dir='down'] {
+  color: var(--dir-down);
+}
+
+.node {
+  cursor: pointer;
+}

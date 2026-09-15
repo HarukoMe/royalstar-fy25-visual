@@ -1,0 +1,136 @@
+.wrap {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.plot {
+  width: 100%;
+}
+
+.stack {
+  height: 340px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.equity {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--equity-color) 14%, transparent),
+    color-mix(in oklab, var(--equity-color) 30%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--equity-color) 55%, transparent);
+  border-radius: 2px;
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 1.2s var(--ease-out);
+}
+
+.stack[data-in='true'] .equity {
+  transform: scaleY(1);
+}
+
+.equityLabel {
+  position: absolute;
+  top: 1rem;
+  left: 1.1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.equityValue {
+  font-size: clamp(1.1rem, 0.9rem + 0.9vw, 1.6rem);
+  color: var(--ink);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.cap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--cap-color) 42%, transparent),
+    color-mix(in oklab, var(--cap-color) 70%, transparent)
+  );
+  border-top: 1px solid color-mix(in oklab, var(--cap-color) 85%, transparent);
+  opacity: 0;
+  transition: opacity 900ms var(--ease-out) 700ms;
+}
+
+.stack[data-in='true'] .cap {
+  opacity: 1;
+}
+
+.capLabel {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 1.1rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.capValue {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.eyebrowSm {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.quote {
+  margin: 0;
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--hairline-strong);
+  display: grid;
+  gap: 1rem;
+}
+
+.quote p {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.quote cite {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-style: normal;
+}
+
+@media (max-width: 62rem) {
+  .wrap {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .stack {
+    height: 260px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .equity,
+  .cap {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}

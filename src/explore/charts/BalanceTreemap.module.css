@@ -1,0 +1,77 @@
+.groupHead {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  fill: var(--ink-dim);
+}
+
+.groupTotal {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  fill: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tile {
+  opacity: 0;
+  cursor: default;
+}
+
+.tile[data-in='true'] {
+  animation: tileIn 680ms var(--ease-out) both;
+}
+
+@keyframes tileIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tile:hover rect {
+  fill-opacity: 0.34;
+}
+
+.tileLabel {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+}
+
+.tileLabel em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.tileLabel i {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-faint);
+}
+
+.legendRow {
+  margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile[data-in='true'] {
+    animation: none;
+  }
+
+  .tile {
+    opacity: 1;
+  }
+}

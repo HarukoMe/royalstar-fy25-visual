@@ -1,0 +1,50 @@
+.svg {
+  overflow: visible;
+}
+
+.arc {
+  animation: arcIn 1.3s var(--ease-out) both;
+  transform-origin: center;
+}
+
+@keyframes arcIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.centreValue {
+  font-family: var(--font-mono);
+  font-size: 1.85rem;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.centreLabel {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  fill: var(--ink-faint);
+}
+
+.centreSub {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  fill: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.legendRow {
+  margin-top: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc {
+    animation: none;
+  }
+}

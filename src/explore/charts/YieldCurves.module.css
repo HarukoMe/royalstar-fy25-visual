@@ -1,0 +1,61 @@
+.svg {
+  overflow: visible;
+}
+
+.grid {
+  stroke: rgb(255 255 255 / 6%);
+  stroke-width: 1;
+}
+
+.panel {
+  opacity: 0;
+}
+
+.svg[data-in='true'] .panel {
+  animation: panelIn 760ms var(--ease-out) both;
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.curve {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+.svg[data-in='true'] .curve {
+  animation: draw 1.6s var(--ease-out) 0.3s both;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.legendRow {
+  margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svg[data-in='true'] .panel,
+  .svg[data-in='true'] .curve {
+    animation: none;
+  }
+
+  .panel {
+    opacity: 1;
+  }
+
+  .curve {
+    stroke-dashoffset: 0;
+  }
+}
