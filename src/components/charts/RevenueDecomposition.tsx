@@ -37,12 +37,10 @@ export function RevenueDecomposition() {
       >
         {(width) => {
           const height = 300;
-          const max = 260;
-          const afterCeded = entry.value - Math.abs(ceded.value);
-          const s = scaleLinear().domain([0, entry.value]).range([28, max]);
+          const max = 220;
+          const s = scaleLinear().domain([0, entry.value]).range([16, max]);
           const outer = s(entry.value);
-          const mid = s(afterCeded);
-          const inner = Math.max(12, s(remainder.value));
+          const inner = Math.max(14, s(remainder.value));
           const cx = width / 2;
           const cy = height / 2;
 
@@ -53,18 +51,10 @@ export function RevenueDecomposition() {
                 y={cy - outer / 2}
                 width={outer}
                 height={outer}
-                fill={roleColor('gross')}
-                fillOpacity={0.22}
+                fill={roleColor('ceded')}
+                fillOpacity={0.38}
                 stroke={roleColor('gross')}
-              />
-              <rect
-                x={cx - mid / 2}
-                y={cy - mid / 2}
-                width={mid}
-                height={mid}
-                fill={roleColor('operating')}
-                fillOpacity={0.2}
-                stroke={roleColor('operating')}
+                strokeWidth={3}
               />
               <rect
                 x={cx - inner / 2}

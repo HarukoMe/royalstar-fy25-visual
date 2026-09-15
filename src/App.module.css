@@ -1,6 +1,17 @@
 .main {
   position: relative;
   z-index: 1;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 48rem) {
+  .main {
+    padding-top: 4.75rem;
+  }
+
+  .ambient {
+    display: none;
+  }
 }
 
 .ambient {
