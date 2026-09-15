@@ -1,0 +1,100 @@
+.summary {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 0.8rem;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.root {
+  position: relative;
+  max-width: 44rem;
+  padding: 0 0 0 1.6rem;
+  margin: 0;
+}
+
+.root[open] .summary {
+  color: var(--tier-interpretation);
+}
+
+.mark {
+  position: absolute;
+  inset: 0.45rem auto 0.45rem 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--tier-interpretation) 18%,
+    var(--tier-interpretation) 82%,
+    transparent
+  );
+  opacity: 0.55;
+}
+
+.root[data-provenance='on'] {
+  background: rgb(201 162 39 / 6%);
+  outline: 1px solid rgb(201 162 39 / 28%);
+  outline-offset: 4px;
+}
+
+.text {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: color-mix(in oklab, var(--ink) 88%, var(--tier-interpretation));
+}
+
+.basis {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.55rem;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.basis em {
+  font-style: normal;
+  padding: 0.18em 0.5em;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+}
+
+.suppressed {
+  max-width: 44rem;
+  padding: 0.9rem 1.2rem;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: 2px;
+}
+
+.suppressedMark {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 40rem) {
+  .text {
+    font-size: var(--step-0);
+  }
+}

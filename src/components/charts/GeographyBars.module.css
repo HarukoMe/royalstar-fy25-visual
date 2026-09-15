@@ -1,0 +1,45 @@
+.grid {
+  stroke: rgb(255 255 255 / 6%);
+  stroke-width: 1;
+}
+
+.bar {
+  fill-opacity: 0.82;
+  transition: width 1.1s var(--ease-out);
+  rx: 1;
+}
+
+.row:hover .bar {
+  fill-opacity: 1;
+}
+
+.prior {
+  fill-opacity: 0.28;
+  transition: width 1.1s var(--ease-out);
+}
+
+.growth {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.growth[data-dir='up'] {
+  fill: var(--dir-up);
+}
+
+.growth[data-dir='down'] {
+  fill: var(--dir-down);
+}
+
+.legendRow {
+  margin-top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .prior {
+    transition: none;
+  }
+}

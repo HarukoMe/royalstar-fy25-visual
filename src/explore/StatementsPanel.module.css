@@ -1,0 +1,119 @@
+.opinion {
+  margin: 0;
+  padding: 1.6rem 1.8rem;
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--tier-reported);
+  border-radius: 2px;
+  background: rgb(10 18 32 / 45%);
+  max-width: 56rem;
+}
+
+.opinion p {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.triangle {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 0.66rem;
+}
+
+.triangle caption {
+  text-align: left;
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-bottom: 0.9rem;
+}
+
+.triangle thead th {
+  font-weight: 400;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  padding: 0 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--hairline-strong);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.triangle thead th:first-child {
+  text-align: left;
+}
+
+.triangle tbody th,
+.triangle tfoot th {
+  font-weight: 400;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  padding: 0.35rem 0.8rem 0.35rem 0;
+}
+
+.triangle tbody td,
+.triangle tfoot td {
+  text-align: right;
+  padding: 0.35rem 0.55rem;
+  color: var(--ink-dim);
+  border-bottom: 1px solid rgb(255 255 255 / 4%);
+  white-space: nowrap;
+}
+
+.triangle tbody tr:hover td,
+.triangle tbody tr:hover th {
+  background: rgb(255 255 255 / 4%);
+  color: var(--ink);
+}
+
+.emphasis th,
+.emphasis td {
+  color: var(--ink) !important;
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.triangle tfoot th {
+  color: var(--ink-faint);
+}
+
+.triangle tfoot td {
+  text-align: right;
+  color: var(--ink);
+}
+
+.methodology {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.methodology > div {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  padding-left: 1.1rem;
+  border-left: 1px solid var(--hairline-strong);
+}
+
+.methodology h3 {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.methodology p {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  line-height: 1.7;
+}

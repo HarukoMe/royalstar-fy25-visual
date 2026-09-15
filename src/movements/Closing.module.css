@@ -1,0 +1,231 @@
+.thesisBlock {
+  display: grid;
+  gap: 1.6rem;
+  max-width: 52rem;
+}
+
+.thesisText {
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.34;
+  letter-spacing: -0.02em;
+  color: color-mix(in oklab, var(--ink) 90%, var(--tier-interpretation));
+  padding-left: 1.6rem;
+  border-left: 1px solid rgb(201 162 39 / 45%);
+}
+
+.thesisNote {
+  max-width: var(--measure);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  line-height: 1.75;
+  padding-left: 1.6rem;
+}
+
+.threeClaims {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+}
+
+.claim {
+  position: relative;
+  display: grid;
+  gap: 0.9rem;
+  padding: 2rem 1.6rem 1.6rem;
+  background: var(--abyss);
+  align-content: start;
+}
+
+.claim::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--claim-rule);
+  opacity: 0.8;
+}
+
+.claimOrdinal {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--step-1);
+  color: var(--ink-faint);
+  line-height: 1;
+}
+
+.claimHeading {
+  font-size: var(--step-2);
+  max-width: 20ch;
+}
+
+.claimBody {
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  line-height: 1.7;
+}
+
+.claimFigures {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.claimRole {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---- Provenance ---- */
+.provenance {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+  padding-top: 2rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.provTitle {
+  font-size: var(--step-4);
+  margin-top: 1rem;
+  max-width: 22ch;
+}
+
+.provBody {
+  margin-top: 1.3rem;
+  max-width: var(--measure);
+  color: var(--ink-dim);
+  line-height: 1.75;
+  font-size: var(--step--1);
+}
+
+.provBody strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.provActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.8rem;
+}
+
+.provActions button {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.65em 1.1em;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 2px;
+  color: var(--ink);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.provActions button:hover {
+  background: rgb(255 255 255 / 6%);
+  border-color: rgb(255 255 255 / 28%);
+}
+
+.tiers {
+  display: grid;
+  gap: 1.2rem;
+  margin: 0;
+}
+
+.tiers > div {
+  display: grid;
+  gap: 0.4rem;
+  padding-left: 1.2rem;
+  border-left: 1px solid var(--hairline-strong);
+}
+
+.tiers > div[data-tier='reported'] {
+  border-left-color: var(--tier-reported);
+}
+
+.tiers > div[data-tier='calculated'] {
+  border-left-color: var(--tier-calculated);
+}
+
+.tiers > div[data-tier='interpretation'] {
+  border-left-color: var(--tier-interpretation);
+}
+
+.tiers dt {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.tiers dd {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  line-height: 1.65;
+  max-width: 40ch;
+}
+
+/* ---- Footer ---- */
+.footerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  padding-top: 2rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.footerNote {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.footerNote p:not(:global(.eyebrow)) {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  line-height: 1.7;
+}
+
+.cite {
+  font-family: var(--font-mono);
+  font-size: 0.62rem !important;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint) !important;
+  line-height: 1.6 !important;
+}
+
+.colophon {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 2rem;
+  border-top: 1px solid var(--hairline);
+  line-height: 1.8;
+  max-width: 60rem;
+}
+
+@media (max-width: 62rem) {
+  .provenance {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .thesisText {
+    font-size: var(--step-3);
+  }
+}

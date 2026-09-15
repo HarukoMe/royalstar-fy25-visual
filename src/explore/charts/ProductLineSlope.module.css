@@ -1,0 +1,36 @@
+.svg {
+  overflow: visible;
+}
+
+.band {
+  opacity: 0;
+}
+
+.svg[data-in='true'] .band {
+  animation: bandIn 760ms var(--ease-out) both;
+}
+
+@keyframes bandIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.legendRow {
+  margin-top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svg[data-in='true'] .band {
+    animation: none;
+  }
+
+  .band {
+    opacity: 1;
+  }
+}

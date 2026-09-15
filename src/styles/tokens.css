@@ -1,0 +1,85 @@
+/*
+ * Windward Cut — design tokens.
+ *
+ * Colour is accounting grammar, not decoration.
+ * The five --role-* tokens are the only legitimate source of data colour.
+ * Chart components receive a SemanticRole, never a colour. See src/data/roles.ts.
+ */
+
+:root {
+  /* Ground — mangrove night, not generic navy */
+  --abyss: #020c0a;
+  --deep: #071a16;
+  --slate: #0d2a24;
+  --slate-hi: #163832;
+  --hairline: rgb(232 244 236 / 9%);
+  --hairline-strong: rgb(232 244 236 / 18%);
+
+  /* Ink */
+  --ink: #e9f4ee;
+  --ink-dim: #8fad9e;
+  --ink-faint: #5d7a6d;
+
+  /* Semantic data roles */
+  --role-gross: #2f9fca;
+  --role-gross-lo: #0e3d52;
+  --role-ceded: #7c6cf0;
+  --role-ceded-lo: #2a2158;
+  --role-retained: #c9a227;
+  --role-retained-hi: #e8cc6a;
+  --role-retained-lo: #3d320c;
+  --role-operating: #4d5f58;
+  --role-operating-lo: #24302c;
+  --role-investment: #3db8a8;
+  --role-investment-lo: #164740;
+
+  /* Direction of change — deltas only */
+  --dir-up: #3ecf9a;
+  --dir-down: #e06a58;
+
+  /* Provenance tiers */
+  --tier-reported: #8fad9e;
+  --tier-calculated: #3db8a8;
+  --tier-interpretation: #c9a227;
+
+  /* Type */
+  --font-monument: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --font-display: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Scale — monument sizes live outside this for overflow moments */
+  --step--2: clamp(0.64rem, 0.62rem + 0.08vw, 0.72rem);
+  --step--1: clamp(0.78rem, 0.74rem + 0.14vw, 0.88rem);
+  --step-0: clamp(0.95rem, 0.9rem + 0.22vw, 1.08rem);
+  --step-1: clamp(1.12rem, 1.02rem + 0.38vw, 1.36rem);
+  --step-2: clamp(1.32rem, 1.14rem + 0.62vw, 1.72rem);
+  --step-3: clamp(1.58rem, 1.28rem + 0.95vw, 2.2rem);
+  --step-4: clamp(1.9rem, 1.42rem + 1.45vw, 2.85rem);
+  --step-5: clamp(2.3rem, 1.55rem + 2.2vw, 3.7rem);
+  --step-6: clamp(2.8rem, 1.6rem + 3.4vw, 4.8rem);
+  --step-7: clamp(3.4rem, 1.5rem + 5vw, 6.4rem);
+  --step-8: clamp(4.2rem, 1.2rem + 7.5vw, 8.8rem);
+  --step-monument: clamp(5.5rem, 4rem + 14vw, 18rem);
+
+  /* Rhythm */
+  --gutter: clamp(1.1rem, 0.6rem + 3vw, 4.5rem);
+  --measure: 36rem;
+  --content-max: 96rem;
+  --movement-gap: clamp(5rem, 3rem + 12vw, 18rem);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 160ms;
+  --dur-base: 480ms;
+  --dur-slow: 1100ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+  }
+}

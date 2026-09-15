@@ -1,0 +1,131 @@
+.wrap {
+  width: 100%;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.readout {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 0.2rem;
+}
+
+.readoutValue {
+  font-size: clamp(3rem, 8vw, 7rem);
+  color: inherit;
+}
+
+.readoutMeta {
+  display: flex;
+  gap: 1.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.readoutMeta [data-dir='up'] {
+  color: var(--dir-up);
+}
+
+.readoutMeta [data-dir='down'] {
+  color: var(--dir-down);
+}
+
+.contours {
+  opacity: 0.7;
+}
+
+.contour {
+  fill: none;
+  stroke: currentColor;
+  stroke-opacity: 0.09;
+  stroke-width: 1;
+}
+
+.filament {
+  fill: none;
+  stroke: currentColor;
+  stroke-opacity: 0.18;
+  stroke-width: 1;
+  stroke-dasharray: 1 6;
+  opacity: 0;
+}
+
+.filament[data-in='true'] {
+  animation: filamentIn 1.6s var(--ease-out) both;
+}
+
+@keyframes filamentIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.node {
+  opacity: 0;
+  cursor: pointer;
+}
+
+.node[data-in='true'] {
+  animation: nodeIn 1s var(--ease-out) both;
+}
+
+.node[data-active='true'] .core {
+  fill-opacity: 0.28;
+}
+
+@keyframes nodeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.core {
+  fill-opacity: 0.12;
+  stroke-width: 1.5;
+  stroke-opacity: 0.9;
+}
+
+.priorRing {
+  fill: none;
+  stroke-width: 1;
+  stroke-opacity: 0.35;
+  stroke-dasharray: 2 4;
+}
+
+.growth {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.growth[data-dir='up'] {
+  fill: var(--dir-up);
+}
+
+.growth[data-dir='down'] {
+  fill: var(--dir-down);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filament[data-in='true'],
+  .node[data-in='true'] {
+    animation: none;
+  }
+
+  .node,
+  .filament {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,33 @@
+.main {
+  position: relative;
+  z-index: 1;
+}
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--ink);
+}
+
+.ambient :global(.bathymetry) {
+  width: 140%;
+  height: 140%;
+  margin: -12%;
+  opacity: 0.55;
+}
+
+.horizon {
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, rgb(7 26 22 / 80%));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient :global(.bathymetry) {
+    opacity: 0.35;
+  }
+}
