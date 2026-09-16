@@ -17,7 +17,11 @@ export function Interpretation({ id, defaultOpen = false }: { id: string; defaul
   }
 
   return (
-    <details className={styles.root} data-provenance={provenanceMode ? 'on' : 'off'} defaultOpen={defaultOpen}>
+    <details
+      className={styles.root}
+      data-provenance={provenanceMode ? 'on' : 'off'}
+      open={defaultOpen || undefined}
+    >
       <summary className={styles.summary}>Reading</summary>
       <p className={styles.text}>{i.text}</p>
       <p className={styles.basis}>

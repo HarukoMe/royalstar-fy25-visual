@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'zustand'],
   },
   server: { host: '0.0.0.0', port: 5175 },
   preview: { host: '0.0.0.0', port: 4175 },
