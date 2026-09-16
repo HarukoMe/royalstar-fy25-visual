@@ -8,8 +8,6 @@ import os
 import re
 from pathlib import Path
 
-import pdfplumber
-
 MONTHS = {
     m: i
     for i, m in enumerate(
@@ -22,6 +20,47 @@ AMT_RE = re.compile(r"B\$\s*([0-9,]+\.\d{2})")
 CARD_RE = re.compile(r"\b\d{15,19}\b")
 LONG_REF_RE = re.compile(r"\b\d{10,}\b")
 ABM_ID_RE = re.compile(r"\b\d{7}\b")
+CITY_BS_RE = re.compile(
+    r"\s+(?:\*?)(?:NASSAU|FREEPORT|BAHAMAS|ANDROS TOWN|ANDROS|Nassau)\s+BS\b",
+    re.I,
+)
+ATM_PLACE_RE = re.compile(
+    r"\*(?:THOMPSON BLVD(?:\s+#\d+)?|EASE ST\s*&?\s*SOLDIER RD|MAIN BRANCH)\b",
+    re.I,
+)
+
+# Longer names first so overlapping strings redact in one pass.
+PERSON_MAP = (
+    ("TRAYVON DANARYO RAHMING", "[PERSON_TR]"),
+    ("FLORENCE PRATT-MEYER", "[PERSON_MOM]"),
+    ("PRATT MEYER FLOR", "[PERSON_MOM]"),
+    ("CHRYSTAL BAIN", "[PERSON_CB]"),
+    ("HALIAH MEYER", "[PERSON_HM]"),
+    ("ALEX HALL", "[PERSON_AH]"),
+    ("ZAKIA ROLLE", "[PERSON_ZR]"),
+    ("BRITNEY PRATT", "[PERSON_BP]"),
+    ("JUTONIA RUSSELL", "[PERSON_JR]"),
+    ("JARED MAJOR", "[PERSON_JM]"),
+    ("danaedean242", "[PERSON_PP]"),
+    ("DANAEDEAN", "[PERSON_PP]"),
+    ("ROYAL STAR ASSURANCE", "[EMPLOYER]"),
+    ("ROYALSTAR", "[EMPLOYER]"),
+    ("ROYAL STAR", "[EMPLOYER]"),
+)
+
+
+def sanitize(text: str) -> str:
+    for src, token in PERSON_MAP:
+        text = re.sub(re.escape(src), token, text, flags=re.I)
+    text = CARD_RE.sub("[CARD]", text)
+    text = LONG_REF_RE.sub("[REF]", text)
+    text = text.replace("1504542", "[ACCOUNT]")
+    text = ABM_ID_RE.sub("[ATM_ID]", text)
+    text = ATM_PLACE_RE.sub("[ATM]", text)
+    text = CITY_BS_RE.sub("", text)
+    text = re.sub(r"(\[PERSON_[A-Z]+\])(?:\s+\d{2,6})\b", r"\1", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = Path("/home/ubuntu/.cursor/projects/workspace/uploads")
@@ -38,15 +77,9 @@ FILES = [
 ]
 
 
-def sanitize(text: str) -> str:
-    text = CARD_RE.sub("[CARD]", text)
-    text = LONG_REF_RE.sub("[REF]", text)
-    text = text.replace("1504542", "[ACCOUNT]")
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
 def extract_pages_text(path: Path):
+    import pdfplumber
+
     pages = []
     with pdfplumber.open(path) as pdf:
         for i, p in enumerate(pdf.pages):
@@ -277,5 +310,20 @@ def main():
     print(f"Wrote {len(all_txns)} transactions to {OUT}")
 
 
+def redact_committed_json() -> None:
+    """Re-apply sanitize() to the already-extracted ledger (no PDFs required)."""
+    txns = json.loads(OUT.read_text())
+    for t in txns:
+        t["originalDescription"] = sanitize(t.get("originalDescription") or "")
+        t["counterpartyRaw"] = sanitize(t.get("counterpartyRaw") or "")
+    OUT.write_text(json.dumps(txns, indent=2) + "\n")
+    print(f"Redacted {len(txns)} transactions in {OUT}")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if "--redact-json" in sys.argv:
+        redact_committed_json()
+    else:
+        main()

@@ -3,7 +3,7 @@ import { figure as lookup } from '@/data';
 import { roleColor } from '@/data/roles';
 import type { Figure as Fig } from '@/data/types';
 import { delta } from '@/data/types';
-import { compact, exact, formatUnit, percent, signedPercent, unitPrefix } from '@/lib/format';
+import { compact, exact, formatUnit, signedPercent, unitPrefix } from '@/lib/format';
 import { useStore } from '@/state/useStore';
 import { useCountUp } from '@/hooks/useCountUp';
 import styles from './Figure.module.css';
@@ -93,6 +93,12 @@ function ProvenanceCard({ f }: { f: Fig }) {
   );
 }
 
+function priorLabel(f: Fig): string {
+  if (f.prior === undefined) return '';
+  if (f.unit === 'BSD') return `${unitPrefix(f.unit)}${compact(f.prior)}`;
+  return formatUnit(f.prior, f.unit);
+}
+
 export function Figure({
   id,
   size = 'body',
@@ -156,8 +162,7 @@ export function Figure({
           {signedPercent(d.pct, 2)}
           <em>
             {' '}
-            vs {f.unit === 'ratio' ? percent(f.prior!) : `${unitPrefix(f.unit)}${compact(f.prior!)}`}{' '}
-            in 2024
+            vs {priorLabel(f)} in 2024
           </em>
         </span>
       )}

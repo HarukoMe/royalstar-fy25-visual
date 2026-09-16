@@ -59,10 +59,17 @@ export const knownSpokenFor = (state: PlanningState): SpokenForItem[] => {
 };
 
 export const currentPosition = (state: PlanningState): Position => {
-  const assumed = state.currentBalanceOverride ?? state.lastKnownBalance + (state.paydayPosted ? state.expectedPayAmount : 0);
+  const gapNet = round2(
+    (state.gapEntries ?? []).reduce((s, e) => s + (e.direction === "in" ? e.amount : -e.amount), 0)
+  );
+  const assumed =
+    state.currentBalanceOverride ??
+    round2(state.lastKnownBalance + (state.paydayPosted ? state.expectedPayAmount : 0) + gapNet);
   const spoken = knownSpokenFor(state);
   const spokenForKnownTotal = round2(spoken.reduce((s, i) => s + i.amount, 0));
-  const unresolved = state.obligations.filter((o) => o.remaining === null);
+  const unresolved = state.obligations.filter(
+    (o) => o.remaining === null && !(o.id === "october-flight" && !state.octoberFlightMomFronts)
+  );
   const free = round2(assumed - spokenForKnownTotal);
   const daysToPayday = state.paydayPosted
     ? Math.max(1, daysBetween(state.asOfDate, state.followingPayday))
@@ -120,7 +127,7 @@ export const todayPlan = (state: PlanningState, pos: Position, ledger: LedgerTra
       doNotTouch: "The last B$26.91 — treat it as already gone to fees, not as spending money.",
       spendUpTo: "B$0 until payday is confirmed.",
       orders: [
-        "Confirm whether today’s Royal Star deposit of B$1,379.10 has posted.",
+        "Confirm whether today’s salary deposit of B$1,379.10 has posted.",
         "Enter the real current balance. Blind September 1–15 spending is a hole in the map.",
         `Enter remaining amounts for Mom, rent, and groceries owed. Until then free money is not certifiable.`,
         "Do not buy food out, Apple stuff, or send family money from the leftover August cash.",

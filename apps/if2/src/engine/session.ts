@@ -406,6 +406,12 @@ export function beginGrade(
   return { ...state, pending, lastItemId: item.id };
 }
 
+export function endSession(state: EngineState, confidence = 3, now = Date.now()): EngineState {
+  let next = state;
+  if (next.pending) next = commitGrade(next, confidence, now);
+  return { ...next, log: { ...next.log, endedAt: now } };
+}
+
 export function commitGrade(state: EngineState, confidence: number, now = Date.now()): EngineState {
   const pending = state.pending;
   if (!pending) return state;
@@ -487,14 +493,7 @@ function guessConfusion(item: PracticeItem, response: string): string | undefine
 export function grade(item: PracticeItem, response: string): GradeResult {
   const text = normalise(response);
   if (item.options && item.correctIndex != null) {
-    const letter = text.replace(/[^a-d0-3]/g, "");
-    const byLetter = { a: 0, b: 1, c: 2, d: 3 }[text.trim().toLowerCase()[0] as "a" | "b" | "c" | "d"];
-    const idx =
-      byLetter ??
-      item.options.findIndex((o) => normalise(o) === text) ??
-      (Number.isFinite(Number(text)) ? Number(text) : -1);
-    const chosen = typeof byLetter === "number" ? byLetter : item.options.findIndex((o) => text && normalise(o).includes(text) && text.length > 8);
-    const finalIdx = typeof byLetter === "number" ? byLetter : chosen >= 0 ? chosen : idx;
+    const finalIdx = matchMcqOption(item.options, text);
     const success = finalIdx === item.correctIndex;
     return {
       success,
@@ -540,6 +539,21 @@ function containsKernel(text: string, kernel: string): boolean {
   const parts = k.split(/[^a-z0-9£.]+/).filter((p) => p.length > 2);
   const hits = parts.filter((p) => text.includes(p)).length;
   return text.includes(k) || (parts.length > 0 && hits / parts.length >= 0.6);
+}
+
+/** Letter keys only when the whole response is A–D / 1–4 — never the first letter of option prose. */
+function matchMcqOption(options: string[], text: string): number {
+  const exact = options.findIndex((o) => normalise(o) === text);
+  if (exact >= 0) return exact;
+  const compact = text.replace(/[.)\s]/g, "");
+  if (/^[a-d]$/.test(compact)) return compact.charCodeAt(0) - 97;
+  if (/^[1-4]$/.test(compact)) return Number(compact) - 1;
+  if (/^[0-3]$/.test(compact)) return Number(compact);
+  if (text.length > 8) {
+    const partial = options.findIndex((o) => normalise(o).includes(text) || text.includes(normalise(o)));
+    if (partial >= 0) return partial;
+  }
+  return -1;
 }
 
 function normalise(s: string): string {

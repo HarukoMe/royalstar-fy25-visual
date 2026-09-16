@@ -195,13 +195,17 @@ export function examReadinessFor(model: LearnerModel): number {
   const curr = loadCurriculum();
   const cores = curr.concepts.filter((c) => c.importance === "core");
   if (!cores.length) return 0;
+  const recent = (model.examAttempts ?? []).slice(-3);
+  const examScore = recent.length
+    ? recent.reduce((sum, a) => sum + a.correct / Math.max(1, a.n), 0) / recent.length
+    : 0;
   let w = 0;
   let s = 0;
   for (const c of cores) {
     const st = recomputeMastery(hydrate(model.concepts[c.id], c.id), Date.now());
     const mcq = Math.min(1, st.mcqCorrect / 3);
     const delayed = Math.min(1, st.delayedSuccesses / 2);
-    const examish = 0.55 * mcq + 0.25 * st.estimatedMastery + 0.2 * delayed;
+    const examish = 0.45 * mcq + 0.2 * st.estimatedMastery + 0.15 * delayed + 0.2 * examScore;
     s += examish;
     w += 1;
   }

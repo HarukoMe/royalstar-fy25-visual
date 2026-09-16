@@ -96,17 +96,18 @@ export function LiquidityPanel() {
           <p className={styles.blockSource}>Note 5 — Term Deposits, printed page 32</p>
         </div>
         <p className={styles.blockBody}>
-          Of <strong>27,707,155</strong> in term deposits, <strong>6,747,444</strong> is restricted:
-          funds held in trust and other accounts that cannot be distributed without the permission
-          of insurance regulators in the Cayman Islands, Turks and Caicos, the British Virgin
-          Islands, the United States Virgin Islands and Anguilla. Included in that figure is
-          2,500,000 pledged as security for the loan facility.
+          Of the reported term deposits, restricted funds cannot be distributed without the
+          permission of insurance regulators in the Cayman Islands, Turks and Caicos, the British
+          Virgin Islands, the United States Virgin Islands and Anguilla. Included in that restricted
+          figure is 2,500,000 pledged as security for the loan facility. Accrued interest is part of
+          the balance-sheet total and is shown as its own line so the table adds.
         </p>
         <div className={styles.tableCard}>
           <DataTable
             rows={[
               reported.termDepositsUnrestricted!,
               reported.termDepositsRestricted!,
+              reported.termDepositsAccruedInterest!,
               reported.termDeposits!,
             ]}
             columns={[
