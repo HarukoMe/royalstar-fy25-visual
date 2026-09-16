@@ -12,6 +12,7 @@ import type { FocusActivity } from "../engine/session";
 import {
   beginGrade,
   commitGrade,
+  endSession,
   markRead,
   nextActivity,
   signal,
@@ -41,6 +42,7 @@ export function Focus({
   const [sources, setSources] = useState<string[]>([]);
   const [audioOn, setAudioOn] = useState(false);
   const started = useRef(Date.now());
+  const lastInput = useRef(Date.now());
   const att = useRef<AttentionSnapshot>(emptyAttention());
   const clicks = useRef<number[]>([]);
   const engineRef = useRef(engine);
@@ -55,8 +57,14 @@ export function Focus({
   }, [activity, audioOn, audio]);
 
   useEffect(() => {
+    const mark = () => {
+      lastInput.current = Date.now();
+    };
+    window.addEventListener("pointerdown", mark);
+    window.addEventListener("keydown", mark);
+    window.addEventListener("scroll", mark, true);
     const id = window.setInterval(() => {
-      const idle = Date.now() - started.current;
+      const idle = Date.now() - lastInput.current;
       const { signals } = noteIdle(att.current, idle);
       if (signals.includes("inactivity") && activityRef.current.kind === "read") {
         const next = signal(engineRef.current, "inactivity");
@@ -64,7 +72,12 @@ export function Focus({
         jump(next);
       }
     }, 4000);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+      window.removeEventListener("scroll", mark, true);
+    };
   }, [setEngine]);
 
   function bumpClick() {
@@ -80,6 +93,7 @@ export function Focus({
 
   function jump(e: EngineState = engine) {
     started.current = Date.now();
+    lastInput.current = Date.now();
     const a = nextActivity(e);
     setActivity(a);
     setDraft("");
@@ -88,7 +102,7 @@ export function Focus({
     setFeedback(null);
     setTutor(null);
     if (a.kind === "debrief") {
-      const ended = { ...e, log: { ...e.log, endedAt: Date.now() } };
+      const ended = endSession(e);
       saveLearner(ended.learner);
       saveSession(ended.log);
       onEnded(ended);

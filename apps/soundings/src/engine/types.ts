@@ -105,6 +105,14 @@ export interface ManualObligation {
   priority: number;
 }
 
+export interface GapEntry {
+  id: string;
+  date: string;
+  amount: number;
+  direction: Direction;
+  note: string;
+}
+
 export interface PlanningState {
   asOfDate: string;
   lastKnownBalance: number;
@@ -124,6 +132,7 @@ export interface PlanningState {
   payAllFamilyNow: boolean;
   freezeDiscretionaryDays: number;
   obligations: ManualObligation[];
+  gapEntries: GapEntry[];
 }
 
 export type Verdict = "SAFE" | "WAIT_UNTIL_PAYDAY" | "AFFORDABLE_BUT_BAD_IDEA" | "ONLY_IF_YOU_CUT" | "NO";

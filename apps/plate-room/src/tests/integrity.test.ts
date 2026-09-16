@@ -18,6 +18,7 @@ import {
 import { calculated, netIncomeBridge, revenueDecomposition } from '@/data/calculated';
 import { grossTriangle, netTriangle, triangleReconciliation } from '@/data/claims';
 import { figures } from '@/data';
+import { compact, formatUnit } from '@/lib/format';
 
 const v = (id: string) => {
   const f = r[id];
@@ -434,12 +435,12 @@ describe('Note 19 — concentrations and sensitivities', () => {
   });
 
   it('term deposit components sum to the reported total, both years', () => {
-    expect(v('termDepositsUnrestricted') + v('termDepositsRestricted') + 150_211).toBe(
-      v('termDeposits'),
-    );
-    expect(p('termDepositsUnrestricted') + p('termDepositsRestricted') + 174_756).toBe(
-      p('termDeposits'),
-    );
+    expect(
+      v('termDepositsUnrestricted') + v('termDepositsRestricted') + v('termDepositsAccruedInterest'),
+    ).toBe(v('termDeposits'));
+    expect(
+      p('termDepositsUnrestricted') + p('termDepositsRestricted') + p('termDepositsAccruedInterest'),
+    ).toBe(p('termDeposits'));
   });
 
   it('due from agents nets the ECL allowance, both years', () => {
@@ -532,5 +533,13 @@ describe('provenance completeness', () => {
         expect(figures[input], `${id} input ${input}`).toBeDefined();
       }
     }
+  });
+});
+
+describe('unit formatting', () => {
+  it('per-share comparatives keep cents instead of compact rounding', () => {
+    expect(formatUnit(0.91, 'perShare')).toBe('$0.91');
+    expect(formatUnit(5.5, 'perShare')).toBe('$5.50');
+    expect(compact(0.91)).toBe('1');
   });
 });

@@ -1,5 +1,5 @@
 import { loadCurriculum } from "../curriculum/compile";
-import { emptyState, examReadinessFor, recomputeMastery } from "./learner";
+import { applyRetrieval, emptyState, examReadinessFor, recomputeMastery } from "./learner";
 import type { ChapterId, ExamAttempt, LearnerModel, PracticeItem } from "./types";
 import { shuffleMcq } from "./shuffle";
 
@@ -92,6 +92,8 @@ export function startExam(learner: LearnerModel, opts: { mode: ExamMode; chapter
 export function finishExam(learner: LearnerModel, exam: ExamState): { learner: LearnerModel; attempt: ExamAttempt; byConcept: Record<string, { n: number; correct: number }> } {
   const byConcept: Record<string, { n: number; correct: number }> = {};
   let correct = 0;
+  const finishedAt = Date.now();
+  let next = learner;
   exam.questions.forEach((q, i) => {
     const ok = exam.answers[i] === q.displayCorrect;
     if (ok) correct += 1;
@@ -100,18 +102,29 @@ export function finishExam(learner: LearnerModel, exam: ExamState): { learner: L
       row.n += 1;
       if (ok) row.correct += 1;
       byConcept[cid] = row;
+      const res = applyRetrieval(next, {
+        conceptId: cid,
+        now: finishedAt,
+        success: ok,
+        partial: false,
+        confidence: 3,
+        latencyMs: 0,
+        recognition: true,
+        item: q.item,
+      });
+      next = res.model;
     }
   });
   const attempt: ExamAttempt = {
     id: `exam-${exam.startedAt}`,
-    at: Date.now(),
+    at: finishedAt,
     mode: exam.mode,
     n: exam.questions.length,
     correct,
     chapter: exam.chapter,
     byConcept,
   };
-  let next = { ...learner, examAttempts: [...(learner.examAttempts ?? []), attempt] };
+  next = { ...next, examAttempts: [...(next.examAttempts ?? []), attempt] };
   next = { ...next, examReadiness: { "1.1": examReadinessFor(next) } };
   return { learner: next, attempt, byConcept };
 }

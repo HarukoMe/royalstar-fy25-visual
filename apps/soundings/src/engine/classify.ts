@@ -16,16 +16,16 @@ const textOf = (txn: RawTransaction): string =>
   `${txn.typeRaw} ${txn.originalDescription} ${txn.counterpartyRaw}`.toUpperCase();
 
 const people: { match: string; name: string }[] = [
-  { match: "FLORENCE PRATT-MEYER", name: "Mom" },
-  { match: "PRATT MEYER FLOR", name: "Mom" },
-  { match: "CHRYSTAL BAIN", name: "Chrystal Bain" },
-  { match: "HALIAH MEYER", name: "Haliah Meyer" },
-  { match: "ALEX HALL", name: "Alex Hall" },
-  { match: "ZAKIA ROLLE", name: "Zakia Rolle" },
-  { match: "BRITNEY PRATT", name: "Britney Pratt" },
-  { match: "TRAYVON DANARYO RAHMING", name: "Trayvon Rahming" },
-  { match: "JUTONIA RUSSELL", name: "Jutonia Russell" },
-  { match: "JARED MAJOR", name: "Jared Major" },
+  { match: "[PERSON_MOM]", name: "Mom" },
+  { match: "[PERSON_CB]", name: "Chrystal" },
+  { match: "[PERSON_HM]", name: "Haliah" },
+  { match: "[PERSON_AH]", name: "Alex" },
+  { match: "[PERSON_ZR]", name: "Zakia" },
+  { match: "[PERSON_BP]", name: "Britney" },
+  { match: "[PERSON_TR]", name: "Trayvon" },
+  { match: "[PERSON_JR]", name: "Jutonia" },
+  { match: "[PERSON_JM]", name: "Jared" },
+  { match: "[PERSON_PP]", name: "PayPal person" },
 ];
 
 interface MerchantRule {
@@ -123,7 +123,6 @@ const merchantRules: MerchantRule[] = [
   { match: "PP*APPLE", merchant: "Apple", category: "Subscriptions", subcategory: "Apps / Apple", necessity: "flexible" },
   { match: "AMAZON MKTPL", merchant: "Amazon Marketplace", category: "Shopping", subcategory: "Online", necessity: "discretionary" },
   { match: "AMAZON RETA", merchant: "Amazon", category: "Shopping", subcategory: "Online", necessity: "discretionary" },
-  { match: "PAYPAL *DANAEDEAN", merchant: "PayPal danaedean242", category: "Personal transfers", subcategory: "PayPal person", necessity: "flexible" },
   { match: "6 MMM", merchant: "6 MMM's", category: "Dining", subcategory: "Eating out", necessity: "discretionary" },
 ];
 
@@ -183,10 +182,10 @@ export const classifyRaw = (txn: RawTransaction): ClassifyHit => {
     };
   }
 
-  if (hay.includes("ROYAL STAR") || hay.includes("ROYALSTAR")) {
+  if (hay.includes("[EMPLOYER]") || hay.includes("ROYAL STAR") || hay.includes("ROYALSTAR")) {
     return {
-      merchant: "Royal Star Assurance",
-      counterparty: "Royal Star Assurance",
+      merchant: "Employer payroll",
+      counterparty: "Employer payroll",
       category: "Income",
       subcategory: "Salary",
       flowKind: "salary",
@@ -229,15 +228,12 @@ export const classifyRaw = (txn: RawTransaction): ClassifyHit => {
 
   for (const rule of merchantRules) {
     if (ruleMatch(hay, rule.match)) {
-      if (hay.includes("PAYPAL *DANAEDEAN")) {
-        flags.push("personal_via_paypal");
-      }
       return {
         merchant: rule.merchant,
         counterparty: rule.merchant,
         category: rule.category,
         subcategory: rule.subcategory,
-        flowKind: flags.includes("personal_via_paypal") ? (txn.direction === "in" ? "personal_in" : "merchant") : "merchant",
+        flowKind: "merchant",
         necessity: rule.necessity,
         confidence: rule.confidence ?? 0.9,
         flags,
