@@ -76,6 +76,20 @@ export type LearningUnit = {
   comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
 };
 
+/** One textbook section (chapter + Key Facts heading), not a single concept unit. */
+export type BookSection = {
+  id: string;
+  chapter: ChapterId;
+  chapterTitle: string;
+  title: string;
+  indexInChapter: number;
+  sectionCountInChapter: number;
+  conceptIds: string[];
+  factIds: string[];
+  reading: { heading?: string; body: string; sources: Provenance[] }[];
+  comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
+};
+
 export type ItemType =
   | "free-recall"
   | "mcq"

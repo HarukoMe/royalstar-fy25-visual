@@ -104,35 +104,70 @@ describe("mastery vs accessibility", () => {
 });
 
 describe("session engine", () => {
-  it("starts with prediction or reading, not a quiz dump", () => {
+  it("starts with a book section, not a prediction prompt or quiz dump", () => {
     const s = startSession(createLearner(), Date.now());
     const a = nextActivity(s, Date.now());
-    expect(["predict", "read"].includes(a.kind)).toBe(true);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.section.chapter).toBe(1);
+      expect(a.section.title.length).toBeGreaterThan(3);
+      expect(a.speech.some((x) => /This unit is/.test(x.text))).toBe(false);
+      const claim = loadCurriculum().facts[0]!.claim.replace(/\[\[|\]\]/g, "");
+      expect(a.speech.some((x) => x.text.includes(claim.slice(0, 40)))).toBe(true);
+      const joined = a.speech.map((x) => x.text).join(" ");
+      expect(joined.length).toBeGreaterThan(120);
+    }
+  });
+
+  it("compiles every fact into a chapter/section and keeps MCQ breadth", () => {
+    const { sections, facts, stats } = loadCurriculum();
+    expect(sections.length).toBeGreaterThan(80);
+    expect(facts.every((f) => sections.some((s) => s.factIds.includes(f.id)))).toBe(true);
+    expect(sections.flatMap((s) => s.factIds).length).toBe(facts.length);
+    expect(stats.sections).toBe(sections.length);
+    expect(sections.every((s) => s.chapter >= 1 && s.chapter <= 6)).toBe(true);
+  });
+
+  it("uses a four-option MCQ after reading, not a typing prompt", () => {
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      s = markRead(s, a.unit);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      expect(a.item.type).toBe("mcq");
+      expect(a.item.options).toHaveLength(4);
+      expect(a.speech[0]?.text).toBe(a.item.prompt);
+    }
+  });
+
+  it("can open a later chapter without typing a prediction first", () => {
+    const s = startSession(createLearner(), Date.now(), { chapter: 4 });
+    const a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") expect(a.section.chapter).toBe(4);
   });
 
   it("switches to retrieval on inactivity rather than idling on reading", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "compulsory third party on public roads", 4000, false);
-      s = commitGrade(s, 3);
-      a = nextActivity(s);
-    }
     expect(a.kind).toBe("read");
     if (a.kind === "read") s = markRead(s, a.unit);
     s = signal(s, "inactivity");
     a = nextActivity(s);
     expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      expect(a.item.type).toBe("mcq");
+      expect(a.item.options).toHaveLength(4);
+    }
   });
 
   it("retrieves the unit just read instead of skipping ahead", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "illegal to drive on a public road without liability cover", 5000, false);
-      s = commitGrade(s, 3);
-      a = nextActivity(s);
-    }
     expect(a.kind).toBe("read");
     if (a.kind === "read") {
       s = markRead(s, a.unit);
@@ -198,9 +233,11 @@ describe("session close", () => {
   it("commits a pending answer and stamps endedAt", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "compulsory third party on public roads", 4000, false);
-    } else if (a.kind === "retrieve") {
+    if (a.kind === "read") {
+      s = markRead(s, a.unit);
+      a = nextActivity(s);
+    }
+    if (a.kind === "retrieve") {
       const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "x";
       s = beginGrade(s, a.item, ans, 4000, false);
     }
@@ -215,11 +252,6 @@ describe("breadth across sessions", () => {
   it("does not retire a concept after one MCQ, and later items can open a different unit", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "illegal to drive without third party cover", 5000, false);
-      s = commitGrade(s, 3);
-      a = nextActivity(s);
-    }
     expect(a.kind).toBe("read");
     const firstUnit = a.kind === "read" ? a.unit.id : "";
     if (a.kind === "read") {

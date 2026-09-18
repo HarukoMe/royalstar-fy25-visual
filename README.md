@@ -4,7 +4,7 @@ This repository holds three separate apps. They do not share a runtime, types, o
 
 | App | Path | What it is |
 | --- | --- | --- |
-| **IF2 Conduct** | `apps/if2` | Evidence-informed study conductor for CII IF2 2026, Chapters 1–6 (syllabus 1.1) |
+| **IF2 Conduct** | `apps/if2` | CII IF2 2026 Chapters 1–6 (syllabus 1.1): read a section, hear it, then MCQs |
 | **Soundings** | `apps/soundings` | Private personal financial control room |
 | **Plate Room** | `apps/plate-room` | Cinematic FY2025 reading of RoyalStar Assurance’s audited statements |
 
@@ -29,9 +29,9 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Use **Focus** to study. The atlas outside the session shows gaps, mix-ups, due retrievals and a separate exam-readiness overlay — not a single percentage of “done”.
+Open the printed URL (or the GitHub Pages study URL). **Study** starts on a book section: chapter → heading → sourced prose, one section at a time. **Listen to this section** reads that same text (play / pause / resume). After reading, **Question on this section** is a four-option MCQ — lock, then feedback. Typing is optional (“Answer in your own words next time”). Exam practice stays MCQ with feedback withheld until the set ends.
 
-Course content is taken from the supplied IF2 syllabus, examination guide, 2026 key facts (chs 1–6) and the chapter 1 study-text extract. Pedagogy is in `apps/if2/docs/learning-science.md`.
+The **Map** is optional: coverage, mix-ups, and Export/Import if you switch machines. Course content is taken from the supplied IF2 syllabus, examination guide, 2026 key facts (chs 1–6) and the chapter 1 study-text extract. Pedagogy is in `apps/if2/docs/learning-science.md`.
 
 CII materials remain copyright of the Chartered Insurance Institute and are used here only to drive personal study software.
 

@@ -1,4 +1,4 @@
-import type { AuthoredFact, Concept, LearningUnit, PracticeItem, Provenance } from "../engine/types";
+import type { AuthoredFact, BookSection, Concept, LearningUnit, PracticeItem, Provenance } from "../engine/types";
 import { FACTS, CHAPTER_META } from "./facts";
 import { MORE_FACTS } from "./facts-more";
 import { DEPTH_FACTS } from "./facts-depth";
@@ -107,6 +107,80 @@ export function compileUnits(): LearningUnit[] {
     const fb = ALL_FACTS.findIndex((f) => f.conceptId === b.conceptIds[0]);
     return fa - fb;
   });
+}
+
+function slugSection(chapter: ChapterId, title: string, used: Set<string>): string {
+  const base = title
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  let id = `sec-${chapter}-${base || "section"}`;
+  let n = 2;
+  while (used.has(id)) {
+    id = `sec-${chapter}-${base || "section"}-${n}`;
+    n += 1;
+  }
+  used.add(id);
+  return id;
+}
+
+/** Group sourced claims into Key Facts chapter → section order. */
+export function compileSections(): BookSection[] {
+  const buckets: { chapter: ChapterId; title: string; facts: AuthoredFact[] }[] = [];
+  const index = new Map<string, number>();
+  for (const f of ALL_FACTS) {
+    const key = `${f.chapter}::${f.section}`;
+    const existing = index.get(key);
+    if (existing == null) {
+      index.set(key, buckets.length);
+      buckets.push({ chapter: f.chapter, title: f.section, facts: [f] });
+    } else {
+      buckets[existing].facts.push(f);
+    }
+  }
+  const countByChapter: Record<ChapterId, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  for (const b of buckets) countByChapter[b.chapter] += 1;
+  const seenInChapter: Record<ChapterId, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const used = new Set<string>();
+  return buckets.map((b) => {
+    seenInChapter[b.chapter] += 1;
+    const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
+    return {
+      id: slugSection(b.chapter, b.title, used),
+      chapter: b.chapter,
+      chapterTitle: CHAPTER_META[b.chapter].title,
+      title: b.title,
+      indexInChapter: seenInChapter[b.chapter],
+      sectionCountInChapter: countByChapter[b.chapter],
+      conceptIds,
+      factIds: b.facts.map((f) => f.id),
+      reading: b.facts.map((f) => ({
+        heading: f.title === b.title ? undefined : f.title,
+        body: readingFor(f),
+        sources: f.sources,
+      })),
+      comparisonTable: comparisonFor(conceptIds.find((id) => id === "motor-cover-levels") ?? conceptIds[0], b.facts),
+    };
+  });
+}
+
+export function sectionAsUnit(section: BookSection): LearningUnit {
+  return {
+    id: section.id,
+    chapter: section.chapter,
+    title: section.title,
+    conceptIds: section.conceptIds,
+    factIds: section.factIds,
+    load: Math.min(5, Math.max(1, section.conceptIds.length)) as 1 | 2 | 3 | 4 | 5,
+    prerequisites: [],
+    reading: section.reading.map((r) => ({
+      heading: r.heading || section.title,
+      body: r.body,
+      sources: r.sources,
+    })),
+    comparisonTable: section.comparisonTable,
+  };
 }
 
 function comparisonFor(conceptId: string, facts: AuthoredFact[]): LearningUnit["comparisonTable"] {
@@ -481,6 +555,7 @@ export function curriculumStats() {
     facts: ALL_FACTS.length,
     concepts: concepts.length,
     units: units.length,
+    sections: compileSections().length,
     items: items.length,
     mcq: mcq.length,
     examStyleMcq: mcq.filter((i) => i.examStyle).length,
@@ -516,6 +591,7 @@ export type Curriculum = {
   factById: Record<string, AuthoredFact>;
   concepts: Concept[];
   units: LearningUnit[];
+  sections: BookSection[];
   items: PracticeItem[];
   questions: AuthoredQuestion[];
   stats: ReturnType<typeof curriculumStats>;
@@ -529,6 +605,7 @@ export function loadCurriculum(): Curriculum {
     factById: Object.fromEntries(ALL_FACTS.map((f) => [f.id, f])),
     concepts: compileConcepts(),
     units: compileUnits(),
+    sections: compileSections(),
     items: compileItems(),
     questions: ALL_QUESTIONS,
     stats: curriculumStats(),

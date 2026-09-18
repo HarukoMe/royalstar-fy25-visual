@@ -1,4 +1,4 @@
-import { loadCurriculum } from "../curriculum/compile";
+import { loadCurriculum, sectionAsUnit } from "../curriculum/compile";
 import {
   applyExposure,
   applyRetrieval,
@@ -7,11 +7,12 @@ import {
   examReadinessFor,
   recomputeMastery,
 } from "./learner";
-import { dueConceptIds, nextNewUnitId, scheduleAfterRetrieval, scheduleWhy } from "./scheduler";
-import { conceptNeedsMoreEncoding } from "./coverage";
+import { dueConceptIds, nextNewSection, scheduleAfterRetrieval, scheduleWhy } from "./scheduler";
 import type {
   ActivityKind,
   AttentionSignal,
+  BookSection,
+  ChapterId,
   ErrorClass,
   LearningUnit,
   LearnerModel,
@@ -31,6 +32,7 @@ export type FocusActivity =
   | {
       kind: "read";
       unit: LearningUnit;
+      section: BookSection;
       shortened: boolean;
       speech: SpeechAct[];
     }
@@ -97,9 +99,15 @@ export type EngineState = {
   pending?: PendingGrade;
   lastItemId?: string;
   rereadOnUnit?: string;
+  preferredChapter?: ChapterId;
+  ownWords: boolean;
 };
 
-export function startSession(learner: LearnerModel | null, now = Date.now()): EngineState {
+export function startSession(
+  learner: LearnerModel | null,
+  now = Date.now(),
+  opts?: { chapter?: ChapterId }
+): EngineState {
   const model = learner ?? createLearner();
   return {
     learner: { ...model, sessionCount: model.sessionCount + 1 },
@@ -110,6 +118,8 @@ export function startSession(learner: LearnerModel | null, now = Date.now()): En
     retrieveCount: 0,
     startedAt: now,
     targetMs: sessionMinutesDefault * 60 * 1000,
+    preferredChapter: opts?.chapter,
+    ownWords: false,
   };
 }
 
@@ -129,62 +139,40 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
   if (lastIntro) {
     const st = state.learner.concepts[lastIntro];
     const justRead = state.log.events.some((e) => e.type === "read" && e.conceptIds?.includes(lastIntro));
-    const noRetrieval = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) === 0;
+    const retrievedThisSession = state.log.events.some(
+      (e) => e.type === "graded" && e.payload?.prediction !== true && e.conceptIds?.includes(lastIntro)
+    );
+    const noRetrieval = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) === 0 && !retrievedThisSession;
     if (justRead && noRetrieval) {
       const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId });
-      decide(state, now, "Immediate retrieval after encoding", ["testing effect", lastIntro], "retrieve");
-      return retrieveAct(item, "encode");
+      decide(state, now, "One MCQ after the section just read", ["testing effect", lastIntro], "retrieve");
+      return retrieveAct(item, "encode", state);
     }
   }
 
   const due = dueConceptIds(state.learner, now).filter((id) => shouldReviewNow(state, id, now));
   const mixReviews = due.length > 0 && (state.retrieveCount % 3 === 2 || state.introducedThisSession.length >= 1);
 
-  if (lastIntro && conceptNeedsMoreEncoding(state.learner.concepts[lastIntro] ?? emptyState(lastIntro))) {
-    const st = state.learner.concepts[lastIntro];
-    const tried = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) > 0;
-    if (tried) {
-    const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId });
-    decide(state, now, "Stay on concept until retrieved, MCQ’d and attempted on more than one item", [lastIntro], "retrieve");
-    return retrieveAct(item, "encode");
-    }
-  }
-
   if (mixReviews && due[0]) {
     const item = pickItem(curr, due[0], state, { preferMcq: true, avoidId: state.lastItemId });
     decide(state, now, "Due / at-risk concept interleaved", [`concept ${due[0]} due or at forgetting risk`], "retrieval");
-    return retrieveAct(item, "due-review");
+    return retrieveAct(item, "due-review", state);
   }
 
-  const newUnitId = nextNewUnitId(state.learner);
-  if (newUnitId) {
-    const unit = curr.units.find((u) => u.id === newUnitId)!;
-    const cid = unit.conceptIds[0];
-    const exposed = (state.learner.concepts[cid]?.exposures ?? 0) > 0;
-    const predicted = state.log.events.some((e) => e.type === "predicted" && e.conceptIds?.includes(cid));
-    if (unit.prediction && !predicted && !exposed) {
-      const item = curr.items.find((i) => i.type === "prediction" && i.conceptIds.includes(cid)) ?? syntheticPredict(unit);
-      decide(state, now, "Generation before explanation", ["new unit has a prediction prompt"], "predict");
-      return {
-        kind: "predict",
-        unit,
-        item,
-        speech: [{ kind: "ask", text: item.prompt, interruptible: true }],
-      };
-    }
-    const alreadyRead = state.log.events.some((e) => e.type === "read" && e.conceptIds?.includes(cid));
+  const section = nextNewSection(state.learner, state.preferredChapter);
+  if (section) {
+    const alreadyRead = state.log.events.some(
+      (e) => e.type === "read" && e.factIds?.some((id) => section.factIds.includes(id))
+    );
     if (!alreadyRead) {
-      decide(state, now, "Focused reading of one concept boundary", [`unit ${unit.title}`], "read");
-      return {
-        kind: "read",
-        unit,
-        shortened: false,
-        speech: readSpeech(unit, false),
-      };
+      decide(state, now, "Read the next book section", [`ch.${section.chapter} ${section.title}`], "read");
+      return readAct(section, false);
     }
+    const cid =
+      section.conceptIds.find((id) => (state.learner.concepts[id]?.exposures ?? 0) === 0) ?? section.conceptIds[0];
     const item = pickItem(curr, cid, state, { preferMcq: true, avoidId: state.lastItemId });
-    decide(state, now, "Immediate retrieval after encoding", ["testing effect"], "retrieve");
-    return retrieveAct(item, "encode");
+    decide(state, now, "Question on the section just opened", ["testing effect"], "retrieve");
+    return retrieveAct(item, "encode", state);
   }
 
   // All introduced: cumulative mixed retrieval
@@ -193,8 +181,8 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     .sort((a, b) => a.estimatedMastery - b.estimatedMastery)[0];
   if (weak) {
     const item = pickItem(curr, weak.conceptId, state, { preferMcq: true, avoidId: state.lastItemId });
-    decide(state, now, "Curriculum exhausted for new units — successive relearning of weakest", [weak.conceptId], "retrieve");
-    return retrieveAct(item, "cumulative");
+    decide(state, now, "Curriculum exhausted for new sections — successive relearning of weakest", [weak.conceptId], "retrieve");
+    return retrieveAct(item, "cumulative", state);
   }
 
   const report = buildDebrief(state, now);
@@ -219,18 +207,18 @@ function adapt(
   if (signal === "inactivity" || signal === "reread-loop" || signal === "slow-latency") {
     const cid = state.lastConceptIds[0] ?? dueConceptIds(state.learner, now)[0];
     if (cid) {
-      const item = pickItem(curr, cid, state, { preferProduction: true, typeBias: ["teach-back", "summary", "free-recall"] });
-      decide(state, now, "Attention lapse → retrieval, not a break toast", [signal], "retrieve");
-      return retrieveAct(item, "attention-switch");
+      const item = pickItem(curr, cid, state, { preferMcq: true });
+      decide(state, now, "Attention lapse → a question on the live section", [signal], "retrieve");
+      return retrieveAct(item, "attention-switch", state);
     }
   }
   if (signal === "rapid-answer" || signal === "guessing" || signal === "rapid-click") {
     const cid = state.lastConceptIds[0];
     const item = cid
-      ? pickItem(curr, cid, state, { preferProduction: true, typeBias: ["why-wrong", "teach-back", "error-correction"] })
-      : pickItem(curr, loadCurriculum().concepts[0].id, state, {});
-    decide(state, now, "Guessing pattern → slower production / why-wrong", [signal], "retrieve");
-    return retrieveAct(item, "attention-switch");
+      ? pickItem(curr, cid, state, { preferMcq: true, typeBias: ["mcq"] })
+      : pickItem(curr, loadCurriculum().concepts[0].id, state, { preferMcq: true });
+    decide(state, now, "Guessing pattern → lock a slower MCQ", [signal], "retrieve");
+    return retrieveAct(item, "attention-switch", state);
   }
   if (signal === "repeated-error" || signal === "accuracy-drop") {
     const cid = state.lastConceptIds[0];
@@ -241,13 +229,12 @@ function adapt(
         curr.items.find((i) => (i.type === "mcq" || i.type === "distinction") && i.conceptIds.includes(cid!) && i.misconception) ||
         pickItem(curr, cid!, state, { preferMcq: true });
       decide(state, now, "Repeated error → distinction / misconception protocol", [signal, other], "retrieve");
-      return retrieveAct(item, "misconception");
+      return retrieveAct(item, "misconception", state);
     }
-    const unit = curr.units.find((u) => u.conceptIds[0] === cid);
-    if (unit) {
-      decide(state, now, "Repeated error → shortened re-exposition", [signal], "read");
-      return { kind: "read", unit, shortened: true, speech: readSpeech(unit, true) };
-    }
+    const section =
+      curr.sections.find((s) => s.conceptIds.includes(cid ?? "")) ?? nextNewSection(state.learner) ?? curr.sections[0];
+    decide(state, now, "Repeated error → shortened re-reading of this section", [signal], "read");
+    return readAct(section, true);
   }
   if (signal === "confidence-mismatch") {
     const tenMinAgo = now - 10 * 60 * 1000;
@@ -256,33 +243,32 @@ function adapt(
       return st?.lastSeenAt && st.lastSeenAt < tenMinAgo;
     }) ?? state.lastConceptIds[1] ?? state.lastConceptIds[0];
     if (earlier) {
-      const item = pickItem(curr, earlier, state, { preferProduction: true });
-      decide(state, now, "Calibration issue → retrieve an earlier concept", [signal, earlier], "retrieve");
-      return retrieveAct(item, "cumulative");
+      const item = pickItem(curr, earlier, state, { preferMcq: true });
+      decide(state, now, "Calibration issue → MCQ on an earlier concept", [signal, earlier], "retrieve");
+      return retrieveAct(item, "cumulative", state);
     }
   }
   if (signal === "reveal-repeat") {
     const cid = state.lastConceptIds[0] ?? curr.concepts[0].id;
-    const item = pickItem(curr, cid, state, { typeBias: ["cloze", "free-recall"] });
-    decide(state, now, "Reveal loop → force reconstruction", [signal], "retrieve");
-    return retrieveAct(item, "encode");
+    const item = pickItem(curr, cid, state, { preferMcq: true });
+    decide(state, now, "Reveal loop → another MCQ without a peek", [signal], "retrieve");
+    return retrieveAct(item, "encode", state);
   }
 
-  const unitId = nextNewUnitId(state.learner);
-  const unit = curr.units.find((u) => u.id === unitId) ?? curr.units[0];
-  return { kind: "read", unit, shortened: true, speech: readSpeech(unit, true) };
+  const section = nextNewSection(state.learner) ?? curr.sections[0];
+  return readAct(section, true);
 }
 
 function describeAdapt(s: AttentionSignal): string {
   switch (s) {
     case "inactivity":
-      return "Switch from reading to retrieval of the live concept";
+      return "Switch from reading to an MCQ on the live section";
     case "reread-loop":
-      return "Stop restudy; ask for a one-sentence explanation";
+      return "Stop restudy; ask an MCQ on the same section";
     case "rapid-answer":
     case "guessing":
     case "rapid-click":
-      return "Slow the format: production / why-wrong instead of tap-MCQ";
+      return "Slow the format: lock an MCQ rather than rapid tapping";
     case "repeated-error":
     case "accuracy-drop":
       return "Shorten exposition or force a distinction";
@@ -295,11 +281,25 @@ function describeAdapt(s: AttentionSignal): string {
   }
 }
 
-function retrieveAct(item: PracticeItem, mode: Extract<FocusActivity, { kind: "retrieve" }>["mode"]): FocusActivity {
+function readAct(section: BookSection, shortened: boolean): FocusActivity {
+  return {
+    kind: "read",
+    unit: sectionAsUnit(section),
+    section,
+    shortened,
+    speech: readSpeech(section, shortened),
+  };
+}
+
+function retrieveAct(
+  item: PracticeItem,
+  mode: Extract<FocusActivity, { kind: "retrieve" }>["mode"],
+  _state: EngineState
+): FocusActivity {
   return {
     kind: "retrieve",
     item,
-    speech: [{ kind: "ask", text: item.prompt + (item.options ? " Choose A to D." : " Answer in your own words."), interruptible: true }],
+    speech: [{ kind: "ask", text: item.prompt, interruptible: true }],
     mode,
   };
 }
@@ -315,13 +315,12 @@ function pickItem(
     const biased = pool.filter((i) => opts.typeBias!.includes(i.type));
     if (biased.length) pool = biased;
   }
-  if (opts.preferProduction) {
+  if (state.ownWords && opts.preferProduction) {
     const prod = pool.filter((i) => !i.recognition);
     if (prod.length) pool = prod;
-  } else if (opts.preferMcq) {
-    const useProduction = state.retrieveCount > 0 && state.retrieveCount % 6 === 5;
-    const mcq = pool.filter((i) => i.type === "mcq" || i.type === "classify");
-    if (!useProduction && mcq.length) pool = mcq;
+  } else {
+    const mcq = pool.filter((i) => i.type === "mcq" && i.options?.length === 4);
+    if (mcq.length) pool = mcq;
   }
   pool = pool.filter((i) => i.id !== opts.avoidId && i.id !== state.lastItemId);
   const stats = state.learner.questionStats ?? {};
@@ -339,28 +338,23 @@ function pickItem(
   return chosen ?? curr.items[0];
 }
 
-function syntheticPredict(unit: LearningUnit): PracticeItem {
-  return {
-    id: `pred-${unit.id}`,
-    type: "prediction",
-    conceptIds: unit.conceptIds,
-    factIds: unit.factIds,
-    skill: "know",
-    recognition: false,
-    prompt: unit.prediction ?? `What do you already believe about ${unit.title}?`,
-    expected: [],
-    rubric: unit.reading.map((r) => r.body).join(" "),
-    sources: unit.reading.flatMap((r) => r.sources),
-  };
-}
-
-function readSpeech(unit: LearningUnit, shortened: boolean): SpeechAct[] {
-  const bodies = shortened ? unit.reading.slice(0, 1) : unit.reading;
-  const hostA = bodies[0]?.body ?? unit.title;
-  return [
-    { kind: "narrate", text: `This unit is ${unit.title}. Stay with one idea.`, interruptible: true },
-    { kind: "narrate", text: hostA.slice(0, shortened ? 400 : 900), interruptible: true },
+function readSpeech(section: BookSection, shortened: boolean): SpeechAct[] {
+  const blocks = shortened ? section.reading.slice(0, 1) : section.reading;
+  const acts: SpeechAct[] = [
+    {
+      kind: "narrate",
+      text: `Chapter ${section.chapter}. ${section.chapterTitle}. ${section.title}.`,
+      interruptible: true,
+    },
   ];
+  for (const block of blocks) {
+    if (block.heading) acts.push({ kind: "narrate", text: block.heading, interruptible: true });
+    for (const para of block.body.split(/\n\n+/)) {
+      const text = para.trim();
+      if (text) acts.push({ kind: "narrate", text, interruptible: true });
+    }
+  }
+  return acts;
 }
 
 function debriefSpeech(r: DebriefReport): SpeechAct[] {
@@ -375,12 +369,21 @@ function debriefSpeech(r: DebriefReport): SpeechAct[] {
 
 export function markRead(state: EngineState, unit: LearningUnit, now = Date.now()): EngineState {
   let learner = state.learner;
-  for (const id of unit.conceptIds) learner = applyExposure(learner, id, now);
+  for (const id of unit.conceptIds) {
+    learner = applyExposure(learner, id, now);
+    const st = learner.concepts[id];
+    if (st && st.nextDueAt == null) {
+      learner = {
+        ...learner,
+        concepts: { ...learner.concepts, [id]: { ...st, nextDueAt: now + 12 * 60 * 1000 } },
+      };
+    }
+  }
   state.log.events.push({ at: now, type: "read", conceptIds: unit.conceptIds, factIds: unit.factIds });
   return {
     ...state,
     learner,
-    lastConceptIds: unique([unit.conceptIds[0], ...state.lastConceptIds]),
+    lastConceptIds: unique([...unit.conceptIds, ...state.lastConceptIds]),
     introducedThisSession: unique([...state.introducedThisSession, ...unit.conceptIds]),
   };
 }
@@ -576,6 +579,16 @@ function decide(state: EngineState, now: number, reason: string, evidence: strin
   state.log.events.push({ at: now, type: "decision", payload: { reason, choice } });
 }
 
+export function openChapter(state: EngineState, chapter: ChapterId): EngineState {
+  return {
+    ...state,
+    preferredChapter: chapter,
+    lastConceptIds: [],
+    queueHint: null,
+    pending: undefined,
+  };
+}
+
 export function signal(state: EngineState, s: AttentionSignal, now = Date.now()): EngineState {
   state.log.events.push({ at: now, type: "signal", payload: { signal: s } });
   return { ...state, queueHint: s };
@@ -615,14 +628,14 @@ export function buildDebrief(state: EngineState, now = Date.now()): DebriefRepor
     }
   }
 
-  const nextUnit = nextNewUnitId(state.learner);
-  const nextTitle = curr.units.find((u) => u.id === nextUnit)?.title;
+  const nextSection = nextNewSection(state.learner);
+  const nextTitle = nextSection ? `Chapter ${nextSection.chapter} · ${nextSection.title}` : undefined;
   const weakest = uncertain[0]?.title;
   const nextFocus = nextTitle
-    ? `Open the next unencoded unit: ${nextTitle}` + (weakest ? `, after a retrieval of ${weakest}.` : ".")
+    ? `Read the next section: ${nextTitle}` + (weakest ? `. Then a question on ${weakest}.` : ".")
     : weakest
-      ? `Stay on successive relearning of ${weakest} — no new chapter until this holds after a gap.`
-      : "Mixed retrieval across Chapters 1–6.";
+      ? `Stay on questions for ${weakest} — no new chapter until this holds after a gap.`
+      : "Mixed questions across Chapters 1–6.";
 
   return {
     understood,

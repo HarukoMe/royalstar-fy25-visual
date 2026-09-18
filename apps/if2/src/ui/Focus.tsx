@@ -15,13 +15,14 @@ import {
   endSession,
   markRead,
   nextActivity,
+  openChapter,
   signal,
   type EngineState,
 } from "../engine/session";
 import { tutorExplain, tutorOnItem } from "../engine/tutor";
 import { createBrowserAudio } from "../engine/audio";
 import { saveLearner, saveSession } from "../storage";
-import type { PracticeItem } from "../engine/types";
+import type { ChapterId, PracticeItem } from "../engine/types";
 import { McqCard } from "./McqCard";
 
 export function Focus({
@@ -35,12 +36,11 @@ export function Focus({
 }) {
   const [activity, setActivity] = useState<FocusActivity>(() => nextActivity(engine));
   const [draft, setDraft] = useState("");
-  const [choice, setChoice] = useState<number | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [tutor, setTutor] = useState<string | null>(null);
   const [sources, setSources] = useState<string[]>([]);
-  const [audioOn, setAudioOn] = useState(false);
+  const [listen, setListen] = useState<"idle" | "speaking" | "paused">("idle");
   const started = useRef(Date.now());
   const lastInput = useRef(Date.now());
   const att = useRef<AttentionSnapshot>(emptyAttention());
@@ -52,9 +52,10 @@ export function Focus({
   const audio = useMemo(() => createBrowserAudio(), []);
 
   useEffect(() => {
-    if (audioOn) audio.speak(activity.speech);
-    else audio.stop();
-  }, [activity, audioOn, audio]);
+    audio.stop();
+    setListen("idle");
+    return () => audio.stop();
+  }, [activity, audio]);
 
   useEffect(() => {
     const mark = () => {
@@ -94,10 +95,11 @@ export function Focus({
   function jump(e: EngineState = engine) {
     started.current = Date.now();
     lastInput.current = Date.now();
+    audio.stop();
+    setListen("idle");
     const a = nextActivity(e);
     setActivity(a);
     setDraft("");
-    setChoice(null);
     setConfidence(null);
     setFeedback(null);
     setTutor(null);
@@ -142,26 +144,68 @@ export function Focus({
     jump(e);
   }
 
+  function goChapter(ch: ChapterId) {
+    const e = openChapter(engine, ch);
+    setEngine(e);
+    jump(e);
+  }
+
+  function playSection() {
+    if (activity.kind !== "read" && activity.kind !== "retrieve") return;
+    audio.speak(activity.speech, () => setListen("idle"));
+    setListen("speaking");
+  }
+
+  function pauseSection() {
+    audio.pause();
+    setListen("paused");
+  }
+
+  function resumeSection() {
+    audio.resume();
+    setListen("speaking");
+  }
+
+  function stopSection() {
+    audio.stop();
+    setListen("idle");
+  }
+
   if (activity.kind === "debrief") return null;
 
   const item = activity.kind === "retrieve" || activity.kind === "predict" ? activity.item : null;
+  const useMcq = Boolean(item?.options && item.options.length === 4 && item.type !== "prediction");
+  const useTyped = Boolean(item && !useMcq);
 
   return (
     <div
       className="stage"
       onClick={(ev) => {
-        if ((ev.target as HTMLElement).closest("button, textarea, input")) return;
+        if ((ev.target as HTMLElement).closest("button, textarea, input, label")) return;
         bumpClick();
       }}
     >
       <article className="card">
-        <p className="kicker">
-          {label(activity)}
-          {audioOn ? " · spoken" : ""}
-        </p>
         {activity.kind === "read" && (
           <>
-            <h2>{activity.unit.title}</h2>
+            <p className="kicker">
+              Chapter {activity.section.chapter} · {activity.section.chapterTitle} · {activity.section.indexInChapter} of{" "}
+              {activity.section.sectionCountInChapter}
+              {activity.shortened ? " · shorter pass" : ""}
+            </p>
+            <div className="chapter-pills" role="navigation" aria-label="Chapters">
+              {([1, 2, 3, 4, 5, 6] as const).map((ch) => (
+                <button
+                  key={ch}
+                  className={activity.section.chapter === ch ? "" : "ghost"}
+                  data-on={activity.section.chapter === ch ? "1" : "0"}
+                  onClick={() => goChapter(ch)}
+                >
+                  {ch}
+                </button>
+              ))}
+            </div>
+            <h2>{activity.section.title}</h2>
             {activity.unit.comparisonTable && !activity.shortened && (
               <table className="table">
                 <thead>
@@ -183,13 +227,13 @@ export function Focus({
               </table>
             )}
             <div className="reading">
-              {(activity.shortened ? activity.unit.reading.slice(0, 1) : activity.unit.reading).map((r) => (
-                <section key={r.heading}>
-                  <h3>{r.heading}</h3>
+              {(activity.shortened ? activity.section.reading.slice(0, 1) : activity.section.reading).map((r, i) => (
+                <section key={`${r.heading ?? "p"}-${i}`}>
+                  {r.heading ? <h3>{r.heading}</h3> : null}
                   {r.body.split("\n\n").map((p) => (
-                    <p key={p.slice(0, 40)}>{p}</p>
+                    <p key={p.slice(0, 48)}>{p}</p>
                   ))}
-                  {r.sources.slice(0, 2).map((s) => (
+                  {r.sources.map((s) => (
                     <div className="source" key={s.locator}>
                       {s.locator}
                     </div>
@@ -197,8 +241,16 @@ export function Focus({
                 </section>
               ))}
             </div>
+            <ListenBar
+              supported={audio.supported}
+              listen={listen}
+              onPlay={playSection}
+              onPause={pauseSection}
+              onResume={resumeSection}
+              onStop={stopSection}
+            />
             <div className="row">
-              <button onClick={() => continueAfterRead(true)}>I have the idea — retrieve it</button>
+              <button onClick={() => continueAfterRead(true)}>Question on this section</button>
               <button
                 className="ghost"
                 onClick={() => {
@@ -217,8 +269,9 @@ export function Focus({
           </>
         )}
 
-        {item && item.options && item.type !== "prediction" && (
+        {useMcq && item && (
           <>
+            <p className="kicker">{label(activity)}</p>
             <h2>{item.examStyle ? "Exam-shaped question" : "Question"}</h2>
             <McqCard
               item={item}
@@ -246,9 +299,10 @@ export function Focus({
           </>
         )}
 
-        {item && (!item.options || item.type === "prediction") && (
+        {useTyped && item && (
           <>
-            <h2>{item.type === "prediction" ? "Before the text" : "Retrieve in your own words"}</h2>
+            <p className="kicker">{label(activity)}</p>
+            <h2>{item.type === "prediction" ? "Before the text" : "In your own words"}</h2>
             <p className="lede">{item.prompt}</p>
             <textarea
               value={draft}
@@ -300,27 +354,78 @@ export function Focus({
           </>
         )}
 
-        <p className="meta">
-          The engine is choosing the next move. Do not hunt the syllabus from here.
-          <button className="ghost" style={{ marginLeft: 8 }} onClick={() => setAudioOn((v) => !v)}>
-            {audioOn ? "Mute" : "Speak this step"}
-          </button>
+        <p className="meta own-words">
+          <label>
+            <input
+              type="checkbox"
+              checked={engine.ownWords}
+              onChange={(ev) => setEngine({ ...engine, ownWords: ev.target.checked })}
+            />{" "}
+            Answer in your own words next time
+          </label>
         </p>
       </article>
     </div>
   );
 }
 
+function ListenBar({
+  supported,
+  listen,
+  onPlay,
+  onPause,
+  onResume,
+  onStop,
+}: {
+  supported: boolean;
+  listen: "idle" | "speaking" | "paused";
+  onPlay: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onStop: () => void;
+}) {
+  if (!supported) {
+    return <p className="meta">This browser has no read-aloud (Web Speech). The text on the page is the same material.</p>;
+  }
+  return (
+    <div className="listen-bar" role="group" aria-label="Read this section aloud">
+      {listen === "idle" && (
+        <button type="button" onClick={onPlay}>
+          Listen to this section
+        </button>
+      )}
+      {listen === "speaking" && (
+        <button type="button" className="ghost" onClick={onPause}>
+          Pause
+        </button>
+      )}
+      {listen === "paused" && (
+        <button type="button" onClick={onResume}>
+          Resume
+        </button>
+      )}
+      {listen !== "idle" && (
+        <button type="button" className="ghost" onClick={onStop}>
+          Stop
+        </button>
+      )}
+      <span className="meta" style={{ margin: 0 }}>
+        Same words as the page
+      </span>
+    </div>
+  );
+}
+
 function label(a: FocusActivity): string {
-  if (a.kind === "read") return a.shortened ? "Shortened exposition" : "Focused reading";
-  if (a.kind === "predict") return "Predict before explanation";
+  if (a.kind === "read") return a.shortened ? "Shorter pass" : "Reading";
+  if (a.kind === "predict") return "Before the text";
   if (a.kind === "retrieve") {
     const map = {
-      "due-review": "Spaced retrieval",
-      encode: "Immediate retrieval",
-      "attention-switch": "Attention adaptation",
+      "due-review": "Due question",
+      encode: "Check this section",
+      "attention-switch": "Quick check",
       cumulative: "Earlier material",
-      misconception: "Distinguish confused ideas",
+      misconception: "Distinguish these",
     };
     return map[a.mode];
   }

@@ -5,16 +5,17 @@ import { ExamPractice } from "./ui/ExamPractice";
 import { Focus } from "./ui/Focus";
 import { buildDebrief, endSession, startSession, type DebriefReport, type EngineState } from "./engine/session";
 import { loadLearner, resetLearner, saveLearner, saveSession } from "./storage";
+import type { ChapterId } from "./engine/types";
 import "./styles.css";
 
 export function App() {
-  const [mode, setMode] = useState<"atlas" | "focus" | "debrief" | "exam">("atlas");
+  const [mode, setMode] = useState<"atlas" | "focus" | "debrief" | "exam">("focus");
   const [learner, setLearner] = useState(() => loadLearner());
-  const [engine, setEngine] = useState<EngineState | null>(null);
+  const [engine, setEngine] = useState<EngineState | null>(() => startSession(loadLearner()));
   const [report, setReport] = useState<DebriefReport | null>(null);
 
-  const begin = () => {
-    const e = startSession(learner);
+  const begin = (chapter?: ChapterId) => {
+    const e = startSession(learner, Date.now(), chapter ? { chapter } : undefined);
     setEngine(e);
     setMode("focus");
   };
@@ -23,7 +24,7 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <h1 className="brand">
-          IF2 <span>Conduct</span>
+          IF2 <span>Chapters 1–6</span>
         </h1>
         {mode === "focus" ? (
           <nav>
@@ -44,13 +45,13 @@ export function App() {
           </nav>
         ) : (
           <nav>
-            <button className="ghost" onClick={() => setMode("atlas")}>
-              Model
-            </button>
-            <button className="ghost" onClick={() => setMode("exam")}>
+            <button onClick={() => begin()}>Study</button>
+            <button className={mode === "exam" ? "" : "ghost"} onClick={() => setMode("exam")}>
               Exam
             </button>
-            <button onClick={begin}>Focus</button>
+            <button className={mode === "atlas" ? "" : "ghost"} onClick={() => setMode("atlas")}>
+              Map
+            </button>
           </nav>
         )}
       </header>
@@ -84,7 +85,7 @@ export function App() {
           }}
         />
       )}
-      {mode === "debrief" && report && <Debrief report={report} onAtlas={() => setMode("atlas")} onAgain={begin} />}
+      {mode === "debrief" && report && <Debrief report={report} onAtlas={() => setMode("atlas")} onAgain={() => begin()} />}
     </div>
   );
 }

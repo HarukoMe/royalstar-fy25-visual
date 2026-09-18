@@ -49,7 +49,7 @@ export function ExamPractice({
           <div className="row">
             <button onClick={() => setResult(null)}>Another set</button>
             <button className="ghost" onClick={onClose}>
-              Back to the model
+              Back to the map
             </button>
           </div>
         </article>
@@ -65,7 +65,8 @@ export function ExamPractice({
           <h2>Sit the question, then find out.</h2>
           <p className="lede">
             Learning sessions explain. This room does not — until the set is finished. Mix of
-            weaker and previously successful items, syllabus 1.1 products only.
+            weaker and previously successful items, syllabus 1.1 products only. Four options;
+            lock, then wait for the end of the set.
           </p>
           <div className="row">
             <button onClick={() => begin("drill")}>Short drill</button>

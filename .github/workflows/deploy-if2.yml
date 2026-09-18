@@ -2,7 +2,7 @@ name: Deploy IF2 Conduct
 
 on:
   push:
-    branches: [main, cursor/if2-learning-engine-ff57]
+    branches: [main, cursor/if2-learning-engine-ff57, cursor/if2-book-read-aloud-c92c]
   workflow_dispatch:
 
 permissions:
