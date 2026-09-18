@@ -71,7 +71,14 @@ export type LearningUnit = {
   factIds: string[];
   load: 1 | 2 | 3 | 4 | 5;
   prerequisites: string[];
-  reading: { heading?: string; body: string; sources: Provenance[]; factId?: string; hold?: string }[];
+  reading: {
+    heading?: string;
+    body: string;
+    bullets?: string[];
+    sources: Provenance[];
+    factId?: string;
+    hold?: string;
+  }[];
   prediction?: string;
   comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
 };
@@ -99,6 +106,7 @@ export type BookSection = {
   reading: {
     heading?: string;
     body: string;
+    bullets?: string[];
     sources: Provenance[];
     role?: ReadingRole;
     factId?: string;

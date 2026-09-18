@@ -6,6 +6,7 @@ import { QUESTIONS, type AuthoredQuestion } from "./questions";
 import { QUESTIONS_MORE } from "./questions-more";
 import type { ChapterId } from "../engine/types";
 import { chapterHold, comparisonForSection, holdForFact, roleForFact, seedTraps, trapsForSection } from "./book-layer";
+import { lessonFor, resetSourceLessonCache } from "./source-lessons";
 
 export const ALL_FACTS: AuthoredFact[] = [...FACTS, ...MORE_FACTS, ...DEPTH_FACTS];
 export const ALL_QUESTIONS: AuthoredQuestion[] = [...QUESTIONS, ...QUESTIONS_MORE];
@@ -16,6 +17,15 @@ function kernels(claim: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(claim))) out.push(m[1]);
   return out;
+}
+
+function alreadyOnPage(hay: string, claim: string): boolean {
+  const text = claim.replace(/\[\[|\]\]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (text.length < 24) return hay.includes(text);
+  if (hay.includes(text.slice(0, 36))) return true;
+  const words = text.split(/[^a-z0-9£.]+/).filter((w) => w.length > 4);
+  if (!words.length) return false;
+  return words.filter((w) => hay.includes(w)).length / words.length >= 0.72;
 }
 
 function plain(claim: string): string {
@@ -151,27 +161,59 @@ export function compileSections(): BookSection[] {
   return buckets.map((b) => {
     seenInChapter[b.chapter] += 1;
     const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
-    const reading = b.facts.flatMap((f, i) => {
-      const hold = holdForFact(f, titleByConcept);
-      const blocks: BookSection["reading"] = [
-        {
-          body: plain(f.claim),
+    const sourced = lessonFor(b.chapter, b.title, b.facts);
+    const hold = holdForFact(b.facts[0]!, titleByConcept);
+    const reading: BookSection["reading"] = [];
+    const hayOf = () =>
+      reading
+        .map((r) => `${r.body} ${(r.bullets ?? []).join(" ")}`)
+        .join(" ")
+        .toLowerCase();
+    if (sourced?.chunks.length) {
+      sourced.chunks.forEach((chunk, i) => {
+        reading.push({
+          heading: i === 0 ? undefined : chunk.heading,
+          body: chunk.body,
+          bullets: chunk.bullets,
+          sources: sourced.sources,
+          role: i === 0 ? "open" : "fact",
+          factId: b.facts[Math.min(i, b.facts.length - 1)]?.id,
+          hold: i === 0 ? hold : undefined,
+        });
+      });
+    }
+    b.facts.forEach((f, i) => {
+      const claim = plain(f.claim);
+      const hay = hayOf();
+      if (!sourced?.chunks.length || !alreadyOnPage(hay, claim)) {
+        reading.push({
+          body: claim,
           sources: f.sources,
           role: roleForFact(f, i),
           factId: f.id,
-          hold,
-        },
-      ];
-      if (f.extra) {
-        blocks.push({
+          hold: reading.some((r) => r.hold) ? undefined : holdForFact(f, titleByConcept),
+        });
+      }
+      if (f.extra && !alreadyOnPage(hayOf(), f.extra)) {
+        reading.push({
           body: f.extra,
           sources: f.sources,
           role: f.kind === "exclusion" ? "trap" : "why",
           factId: f.id,
         });
       }
-      return blocks;
     });
+    if (!reading.length) {
+      reading.push({
+        body: plain(b.facts[0]!.claim),
+        sources: b.facts[0]!.sources,
+        role: "open",
+        factId: b.facts[0]!.id,
+        hold,
+      });
+    } else if (!reading[0]!.hold) {
+      reading[0]!.hold = hold;
+    }
     return {
       id: slugSection(b.chapter, b.title, used),
       chapter: b.chapter,
@@ -626,4 +668,5 @@ export function loadCurriculum(): Curriculum {
 
 export function resetCurriculumCache() {
   _cache = null;
+  resetSourceLessonCache();
 }

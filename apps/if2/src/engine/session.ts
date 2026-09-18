@@ -331,16 +331,17 @@ function lessonUnit(section: BookSection, blocks: BookSection["reading"], shorte
   return {
     ...base,
     conceptIds: conceptIds.length ? conceptIds : section.conceptIds,
-    factIds: factIds.length ? factIds : section.factIds,
+    factIds: shortened && factIds.length ? factIds : section.factIds.length ? section.factIds : factIds,
     load: shortened ? 1 : base.load,
     reading: blocks.map((r) => ({
       heading: r.heading || section.title,
       body: r.body,
+      bullets: r.bullets,
       sources: r.sources,
       factId: r.factId,
       hold: r.hold,
     })),
-    comparisonTable: undefined,
+    comparisonTable: shortened ? undefined : section.comparisonTable,
   };
 }
 
@@ -429,8 +430,15 @@ function readSpeech(
   const acts: SpeechAct[] = [];
   if (hold) acts.push({ kind: "narrate", text: hold, interruptible: true });
   for (const block of blocks) {
-    for (const para of block.body.split(/\n\n+/)) {
+    if (block.heading && block.heading !== section.title) {
+      acts.push({ kind: "narrate", text: block.heading, interruptible: true });
+    }
+    for (const para of (block.body || "").split(/\n\n+/)) {
       const text = para.trim();
+      if (text) acts.push({ kind: "narrate", text, interruptible: true });
+    }
+    for (const bullet of block.bullets ?? []) {
+      const text = bullet.trim();
       if (text) acts.push({ kind: "narrate", text, interruptible: true });
     }
   }

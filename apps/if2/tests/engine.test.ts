@@ -133,15 +133,16 @@ describe("session engine", () => {
       expect(a.section.title).toMatch(/Private motor/i);
       expect(a.kernel.hold!.length).toBeGreaterThan(20);
       expect(a.unit.reading.length).toBeGreaterThan(1);
-      const lesson = a.unit.reading.map((r) => r.body).join(" ");
+      const lesson = a.unit.reading.map((r) => [r.body, ...(r.bullets ?? [])].join(" ")).join(" ");
       expect(lesson).toMatch(/illegal to drive/i);
       expect(lesson).toMatch(/SORN|Statutory Off Road/i);
+      expect(lesson.length).toBeGreaterThan(400);
       expect(a.speech.some((x) => /This unit is/.test(x.text))).toBe(false);
       const claim = loadCurriculum().facts[0]!.claim.replace(/\[\[|\]\]/g, "");
       expect(a.speech.some((x) => x.text.includes(claim.slice(0, 40)))).toBe(true);
       expect(a.speech.some((x) => x.text.includes(a.kernel.hold!))).toBe(true);
       const joined = a.speech.map((x) => x.text).join(" ");
-      expect(joined.length).toBeGreaterThan(80);
+      expect(joined.length).toBeGreaterThan(400);
       expect(joined).not.toMatch(/Comparison\.|Exam trap/);
     }
   });
@@ -156,6 +157,14 @@ describe("session engine", () => {
     expect(sections.filter((s) => s.chapter === 6).length).toBeGreaterThan(8);
     expect(sections.some((s) => s.reading.some((r) => r.hold && r.hold.length > 20))).toBe(true);
     expect(sections.filter((s) => s.chapter === 6).some((s) => s.comparisonTable)).toBe(true);
+    const rta = sections.find((s) => s.chapter === 1 && /Road Traffic Act only/i.test(s.title));
+    expect(rta).toBeTruthy();
+    const rtaText = rta!.reading.map((r) => [r.body, ...(r.bullets ?? [])].join(" ")).join(" ");
+    expect(rtaText).toMatch(/£1\.2 million/);
+    expect(rtaText).toMatch(/unlimited/i);
+    expect(rtaText).toMatch(/emergency medical|Third EU Motor/i);
+    expect(rta!.reading.some((r) => (r.bullets?.length ?? 0) >= 3)).toBe(true);
+    expect(rtaText.length).toBeGreaterThan(500);
     expect(facts.some((f) => f.id === "l-el-min-limit" && f.claim.includes("£5 million"))).toBe(true);
     expect(DEFAULT_KOKORO.voice).toContain("af_heart");
     expect(DEFAULT_KOKORO.langCode).toBe("b");
@@ -259,8 +268,9 @@ describe("session engine", () => {
       expect(a.section.comparisonTable?.rows.length).toBeGreaterThan(3);
       expect(a.section.lede).toMatch(/who was hurt/i);
       expect(a.kernel.hold).toMatch(/who was hurt/i);
-      const lesson = a.unit.reading.map((r) => r.body).join(" ");
+      const lesson = a.unit.reading.map((r) => [r.body, ...(r.bullets ?? [])].join(" ")).join(" ");
       expect(lesson).toMatch(/employers/i);
+      expect(lesson.length).toBeGreaterThan(300);
       expect(a.unit.reading.length).toBeGreaterThan(0);
       const joined = a.speech.map((x) => x.text).join(" ");
       expect(joined).toMatch(/who was hurt|employers/i);

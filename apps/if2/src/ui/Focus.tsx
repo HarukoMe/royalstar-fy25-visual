@@ -224,9 +224,45 @@ export function Focus({
             <h2 className="hold">{hold}</h2>
             <div className="reading">
               {activity.unit.reading.map((r, i) => (
-                <p key={`${r.factId ?? "p"}-${i}`}>{r.body}</p>
+                <section key={`${r.factId ?? "p"}-${i}`}>
+                  {r.heading && r.heading !== activity.section.title && i > 0 ? <h3>{r.heading}</h3> : null}
+                  {r.body ? <p>{r.body}</p> : null}
+                  {r.bullets?.length ? (
+                    <ul>
+                      {r.bullets.map((b) => (
+                        <li key={b.slice(0, 48)}>{b}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
               ))}
             </div>
+            {activity.unit.comparisonTable && (
+              <table className="table lesson-table">
+                <caption>{activity.unit.comparisonTable.caption}</caption>
+                <thead>
+                  <tr>
+                    {activity.unit.comparisonTable.headers.map((h) => (
+                      <th key={h}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activity.unit.comparisonTable.rows.map((row) => (
+                    <tr key={row.join("|")}>
+                      {row.map((cell, i) => (
+                        <td key={`${i}-${cell.slice(0, 24)}`}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {activity.section.traps[0] && (
+              <p className="mixup">
+                Keep this apart. {activity.section.traps[0].body}
+              </p>
+            )}
             <ListenBar
               listen={listen}
               error={listenError}

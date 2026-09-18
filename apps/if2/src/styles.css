@@ -97,7 +97,30 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 2rem; line-height
 
 .reading p { font-size: 1.12rem; line-height: 1.7; margin: 0 0 1rem; }
 .reading h3 { font-family: var(--display); font-size: 1.15rem; margin: 1.4rem 0 0.4rem; }
-.reading section { margin-bottom: 1.1rem; }
+.reading section { margin-bottom: 0.35rem; }
+.reading ul {
+  margin: 0 0 1.1rem;
+  padding-left: 1.2rem;
+  font-size: 1.12rem;
+  line-height: 1.65;
+}
+.reading li { margin: 0 0 0.35rem; }
+.lesson-table { font-size: 0.92rem; margin: 0.4rem 0 1.2rem; }
+.lesson-table caption {
+  text-align: left;
+  font-family: var(--display);
+  font-size: 1rem;
+  margin-bottom: 0.45rem;
+  color: var(--muted);
+}
+.mixup {
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: #3b2a22;
+  border-left: 3px solid var(--accent);
+  padding: 0.15rem 0 0.15rem 0.85rem;
+  margin: 0.4rem 0 1.1rem;
+}
 
 .chapter-pills { display: flex; gap: 0.35rem; margin: 0 0 1rem; }
 .chapter-pills button { padding: 0.25rem 0.7rem; font-size: 0.85rem; min-width: 2.1rem; }
