@@ -83,9 +83,6 @@ export function ListenBar({
             Stop
           </button>
         )}
-        <span className="meta" style={{ margin: 0 }}>
-          {status === "down" ? "Voice not reachable" : null}
-        </span>
         <button type="button" className="ghost" onClick={() => setOpen((v) => !v)}>
           Voice
         </button>

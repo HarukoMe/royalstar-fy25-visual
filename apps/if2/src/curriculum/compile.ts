@@ -18,6 +18,12 @@ function kernels(claim: string): string[] {
   return out;
 }
 
+function firstSentence(text: string): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  const m = t.match(/^(.+?[.!?])(?:\s|$)/);
+  return m ? m[1] : t;
+}
+
 function plain(claim: string): string {
   return claim.replace(/\[\[(.+?)\]\]/g, "$1");
 }
@@ -152,7 +158,7 @@ export function compileSections(): BookSection[] {
     seenInChapter[b.chapter] += 1;
     const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
     const reading = b.facts.map((f, i) => ({
-      body: plain(f.claim),
+      body: firstSentence(plain(f.claim)),
       sources: f.sources,
       role: roleForFact(f, i),
       factId: f.id,
