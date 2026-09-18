@@ -58,7 +58,14 @@ export function Focus({
   activityRef.current = activity;
   listenRef.current = listen;
   const audio = useMemo(() => createBrowserAudio(), []);
+  const [wide, setWide] = useState(() => (typeof window === "undefined" ? true : window.innerWidth > 960));
   const curr = useMemo(() => loadCurriculum(), []);
+
+  useEffect(() => {
+    const on = () => setWide(window.innerWidth > 960);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
 
   useEffect(() => {
     audio.stop();
@@ -235,23 +242,26 @@ export function Focus({
             Ch {chapter} · {CHAPTER_META[chapter].title}
           </h3>
           <p className="rail-hold">{CHAPTER_META[chapter].hold}</p>
-          <ol className="section-toc">
-            {chapterSections.map((s) => {
-              const seen = s.conceptIds.some((id) => (engine.learner.concepts[id]?.exposures ?? 0) > 0);
-              const on = liveSection?.id === s.id;
-              return (
-                <li key={s.id}>
-                  <button type="button" className={on ? "" : "ghost"} data-on={on ? "1" : "0"} onClick={() => goSection(s.id)}>
-                    <span className="toc-idx">{s.indexInChapter}</span>
-                    <span>
-                      {s.title}
-                      {seen ? <em className="cov"> read</em> : null}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+          <details className="toc-fold" open={wide}>
+            <summary>Lessons in this chapter</summary>
+            <ol className="section-toc">
+              {chapterSections.map((s) => {
+                const seen = s.conceptIds.some((id) => (engine.learner.concepts[id]?.exposures ?? 0) > 0);
+                const on = liveSection?.id === s.id;
+                return (
+                  <li key={s.id}>
+                    <button type="button" className={on ? "" : "ghost"} data-on={on ? "1" : "0"} onClick={() => goSection(s.id)}>
+                      <span className="toc-idx">{s.indexInChapter}</span>
+                      <span>
+                        {s.title}
+                        {seen ? <em className="cov"> read</em> : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </details>
         </nav>
 
         <article className="book">

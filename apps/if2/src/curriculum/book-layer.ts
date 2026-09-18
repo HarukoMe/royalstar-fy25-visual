@@ -19,6 +19,12 @@ function plain(claim: string): string {
   return claim.replace(/\[\[(.+?)\]\]/g, "$1");
 }
 
+function shortName(id: string, title: string): string {
+  const cut = title.replace(/\s+is\b.*/i, "").replace(/\s+[—–:].*/, "").trim();
+  if (cut && cut.length <= 42) return cut;
+  return id.replace(/-/g, " ");
+}
+
 export function trapsForSection(facts: AuthoredFact[], titleByConcept: Record<string, string>): BookTrap[] {
   const out: BookTrap[] = [];
   const seen = new Set<string>();
@@ -36,12 +42,14 @@ export function trapsForSection(facts: AuthoredFact[], titleByConcept: Record<st
     if (f.kind === "distinction") {
       push("Easy mix-up", plain(f.claim), f.sources);
     }
-    for (const other of f.confusedWith ?? []) {
-      const otherTitle = titleByConcept[other] ?? other.replace(/-/g, " ");
-      push(`Not ${otherTitle}`, `${f.title} is kept distinct from ${otherTitle}. ${plain(f.claim)}`, f.sources);
+    if (f.kind === "exclusion" || f.kind === "distinction") {
+      for (const other of f.confusedWith ?? []) {
+        const name = shortName(other, titleByConcept[other] ?? other);
+        push(`Not ${name}`, f.extra?.trim() || `${f.title} is kept distinct from ${name}.`, f.sources);
+      }
     }
   }
-  return out.slice(0, 4);
+  return out.slice(0, 3);
 }
 
 type Comparison = { caption: string; headers: string[]; rows: string[][] };
@@ -157,4 +165,26 @@ export function comparisonForSection(
 
 export function chapterHold(chapter: ChapterId): string {
   return CHAPTER_META[chapter].hold;
+}
+
+export function seedTraps(chapter: ChapterId, indexInChapter: number): BookTrap[] {
+  if (chapter !== 6 || indexInChapter !== 1) return [];
+  return [
+    {
+      title: "Guest vs employee",
+      body: "Public liability excludes injury to employees. A hotel guest is PL. A waiter injured arising out of and in the course of employment is EL.",
+      sources: [
+        { kind: "key-facts", chapter: 6, section: "Exclusions", page: "80", locator: "IF2 2026 Key Facts ch.6 p.80 — Exclusions" },
+        { kind: "key-facts", chapter: 6, section: "Standard policy cover", page: "76–78", locator: "IF2 2026 Key Facts ch.6 p.76–78 — Standard policy cover" },
+      ],
+    },
+    {
+      title: "£5 million vs £10 million",
+      body: "The 1998 Regulations set a statutory EL minimum of £5 million. Insurers have provided £10 million in practice since January 1995. That is not the same figure as public liability’s usual £2 million (up to £10 million not uncommon) occurrence limit.",
+      sources: [
+        { kind: "key-facts", chapter: 6, section: "Employers’ liability insurance", page: "73", locator: "IF2 2026 Key Facts ch.6 p.73 — Employers’ liability insurance" },
+        { kind: "key-facts", chapter: 6, section: "Limit of indemnity", page: "80", locator: "IF2 2026 Key Facts ch.6 p.80 — Limit of indemnity" },
+      ],
+    },
+  ];
 }

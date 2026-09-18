@@ -307,7 +307,15 @@ textarea {
 }
 .trap h3 { font-family: var(--display); font-size: 1.05rem; margin: 0.15rem 0 0.35rem; }
 .trap p { margin: 0; line-height: 1.5; }
-.table-wrap { margin: 0.4rem 0 1.3rem; }
+.toc-fold { margin: 0; }
+.toc-fold > summary {
+  display: none;
+  cursor: pointer;
+  color: #c4b8a8;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+.table-wrap { margin: 0.4rem 0 1.3rem; overflow-x: auto; }
 .table-wrap figcaption {
   font-size: 0.82rem;
   color: var(--muted);
@@ -329,12 +337,14 @@ textarea {
     max-height: none;
     overflow: visible;
   }
+  .toc-fold > summary { display: block; }
   .section-toc {
     flex-direction: row;
     flex-wrap: wrap;
   }
   .section-toc li { flex: 1 1 11rem; }
   .rail-hold { display: none; }
+  .table { font-size: 0.78rem; }
 }
 @media (max-width: 640px) {
   .card { padding: 1.4rem 1rem 1.2rem; }

@@ -5,7 +5,7 @@ import { DEPTH_FACTS } from "./facts-depth";
 import { QUESTIONS, type AuthoredQuestion } from "./questions";
 import { QUESTIONS_MORE } from "./questions-more";
 import type { ChapterId } from "../engine/types";
-import { chapterHold, comparisonForSection, roleForFact, trapsForSection } from "./book-layer";
+import { chapterHold, comparisonForSection, roleForFact, seedTraps, trapsForSection } from "./book-layer";
 
 export const ALL_FACTS: AuthoredFact[] = [...FACTS, ...MORE_FACTS, ...DEPTH_FACTS];
 export const ALL_QUESTIONS: AuthoredQuestion[] = [...QUESTIONS, ...QUESTIONS_MORE];
@@ -180,7 +180,7 @@ export function compileSections(): BookSection[] {
       conceptIds,
       factIds: b.facts.map((f) => f.id),
       lede: seenInChapter[b.chapter] === 1 ? chapterHold(b.chapter) : undefined,
-      traps: trapsForSection(b.facts, titleByConcept),
+      traps: [...seedTraps(b.chapter, seenInChapter[b.chapter]), ...trapsForSection(b.facts, titleByConcept)].slice(0, 4),
       reading,
       comparisonTable: comparisonForSection(b.chapter, b.facts, seenInChapter[b.chapter]),
     };

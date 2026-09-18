@@ -34,7 +34,7 @@ export function ListenBar({
     probeKokoro(settings.baseUrl).then((r) => {
       if (!live) return;
       setStatus(r.ok ? "up" : "down");
-      if (!r.ok) setOpen(true);
+      if (!r.ok && typeof window !== "undefined" && window.matchMedia("(min-width: 720px)").matches) setOpen(true);
     });
     return () => {
       live = false;
