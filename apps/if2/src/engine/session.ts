@@ -101,6 +101,8 @@ export type EngineState = {
   lastItemId?: string;
   rereadOnUnit?: string;
   preferredChapter?: ChapterId;
+  /** True when the learner picked a chapter pill — do not send them back to chapter 1. */
+  chapterPinned?: boolean;
   forceSectionId?: string;
   ownWords: boolean;
 };
@@ -121,8 +123,43 @@ export function startSession(
     startedAt: now,
     targetMs: sessionMinutesDefault * 60 * 1000,
     preferredChapter: opts?.chapter,
+    chapterPinned: Boolean(opts?.chapter),
     ownWords: false,
   };
+}
+
+function conceptChapter(conceptId: string): ChapterId | undefined {
+  return loadCurriculum().concepts.find((c) => c.id === conceptId)?.chapter;
+}
+
+function itemChapter(item: PracticeItem): ChapterId | undefined {
+  return item.chapter ?? conceptChapter(item.conceptIds[0] ?? "");
+}
+
+function dueHere(state: EngineState, now: number): string[] {
+  const ch = state.preferredChapter;
+  return dueConceptIds(state.learner, now).filter((id) => {
+    if (!shouldReviewNow(state, id, now)) return false;
+    if (ch && conceptChapter(id) !== ch) return false;
+    return true;
+  });
+}
+
+function nextLesson(state: EngineState) {
+  const ch = state.preferredChapter;
+  if (!ch) return nextNewSection(state.learner);
+  const here = nextNewSection(state.learner, ch);
+  if (here || state.chapterPinned) return here;
+  return nextNewSectionForward(state.learner, ch);
+}
+
+function nextNewSectionForward(learner: LearnerModel, from: ChapterId) {
+  for (const ch of [1, 2, 3, 4, 5, 6] as const) {
+    if (ch <= from) continue;
+    const found = nextNewSection(learner, ch);
+    if (found) return found;
+  }
+  return null;
 }
 
 export function nextActivity(state: EngineState, now = Date.now()): FocusActivity {
@@ -146,7 +183,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     }
   }
 
-  const lastIntro = state.lastConceptIds[0];
+  const lastIntro = state.lastConceptIds.find((id) => !state.preferredChapter || conceptChapter(id) === state.preferredChapter);
   if (lastIntro) {
     const st = state.learner.concepts[lastIntro];
     const justRead = state.log.events.some((e) => e.type === "read" && e.conceptIds?.includes(lastIntro));
@@ -161,7 +198,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     }
   }
 
-  const due = dueConceptIds(state.learner, now).filter((id) => shouldReviewNow(state, id, now));
+  const due = dueHere(state, now);
   const mixReviews = due.length > 0 && (state.retrieveCount % 3 === 2 || state.introducedThisSession.length >= 1);
 
   if (mixReviews && due[0]) {
@@ -170,7 +207,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     return retrieveAct(item, "due-review", state);
   }
 
-  const section = nextNewSection(state.learner, state.preferredChapter);
+  const section = nextLesson(state);
   if (section) {
     const unseen = section.factIds.filter((id) => !(state.learner.seenFacts?.[id] > 0));
     if (unseen.length) {
@@ -186,7 +223,12 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
 
   // All introduced: cumulative mixed retrieval
   const weak = Object.values(state.learner.concepts)
-    .filter((c) => c.exposures > 0)
+    .filter((c) => {
+      if (c.exposures === 0) return false;
+      const cc = conceptChapter(c.conceptId);
+      if (state.preferredChapter && cc && cc < state.preferredChapter) return false;
+      return true;
+    })
     .sort((a, b) => a.estimatedMastery - b.estimatedMastery)[0];
   if (weak) {
     const item = pickItem(curr, weak.conceptId, state, { preferMcq: true, avoidId: state.lastItemId });
@@ -215,13 +257,18 @@ function adapt(
 
   if (signal === "inactivity" || signal === "reread-loop" || signal === "slow-latency") {
     const hasRead = state.log.events.some((e) => e.type === "read");
-    const cid = state.lastConceptIds[0] ?? dueConceptIds(state.learner, now)[0];
+    const cid =
+      state.lastConceptIds.find((id) => !state.preferredChapter || conceptChapter(id) === state.preferredChapter) ??
+      dueHere(state, now)[0];
     if (cid && hasRead) {
       const item = pickItem(curr, cid, state, { preferMcq: true, factIds: lastReadFacts(state) });
       decide(state, now, "Attention lapse → a question on the live section", [signal], "retrieve");
       return retrieveAct(item, "attention-switch", state);
     }
-    const stay = nextNewSection(state.learner, state.preferredChapter) ?? curr.sections[0];
+    const stay =
+      nextLesson(state) ??
+      curr.sections.find((s) => s.chapter === state.preferredChapter) ??
+      curr.sections[0];
     decide(state, now, "Still on the unread lesson — do not quiz yet", [signal], "read");
     return readAct(stay, false);
   }
@@ -245,16 +292,20 @@ function adapt(
       return retrieveAct(item, "misconception", state);
     }
     const section =
-      curr.sections.find((s) => s.conceptIds.includes(cid ?? "")) ?? nextNewSection(state.learner) ?? curr.sections[0];
+      curr.sections.find((s) => s.conceptIds.includes(cid ?? "") && (!state.preferredChapter || s.chapter === state.preferredChapter)) ??
+      nextLesson(state) ??
+      curr.sections.find((s) => s.chapter === state.preferredChapter) ??
+      curr.sections[0];
     decide(state, now, "Repeated error → shortened re-reading of this section", [signal], "read");
     return readAct(section, true);
   }
   if (signal === "confidence-mismatch") {
     const tenMinAgo = now - 10 * 60 * 1000;
     const earlier = [...state.lastConceptIds].reverse().find((id) => {
+      if (state.preferredChapter && conceptChapter(id) !== state.preferredChapter) return false;
       const st = state.learner.concepts[id];
       return st?.lastSeenAt && st.lastSeenAt < tenMinAgo;
-    }) ?? state.lastConceptIds[1] ?? state.lastConceptIds[0];
+    }) ?? state.lastConceptIds.find((id) => !state.preferredChapter || conceptChapter(id) === state.preferredChapter);
     if (earlier) {
       const item = pickItem(curr, earlier, state, { preferMcq: true });
       decide(state, now, "Calibration issue → MCQ on an earlier concept", [signal, earlier], "retrieve");
@@ -268,7 +319,7 @@ function adapt(
     return retrieveAct(item, "encode", state);
   }
 
-  const section = nextNewSection(state.learner) ?? curr.sections[0];
+  const section = nextLesson(state) ?? curr.sections.find((s) => s.chapter === state.preferredChapter) ?? curr.sections[0];
   return readAct(section, true);
 }
 
@@ -292,6 +343,12 @@ function describeAdapt(s: AttentionSignal): string {
     case "slow-latency":
       return "Concrete scenario, smaller unit";
   }
+}
+
+function followChapter(prev: ChapterId | undefined, next?: ChapterId): ChapterId | undefined {
+  if (!next) return prev;
+  if (!prev) return next;
+  return next >= prev ? next : prev;
 }
 
 function lastReadFacts(state: EngineState): string[] {
@@ -364,6 +421,10 @@ function pickItem(
   }
 ): PracticeItem {
   let pool = curr.items.filter((i) => i.conceptIds.includes(conceptId));
+  if (state.preferredChapter) {
+    const same = pool.filter((i) => itemChapter(i) === state.preferredChapter);
+    if (same.length) pool = same;
+  }
   if (opts.factIds?.length) {
     const hit = pool.filter((i) => i.factIds.some((id) => opts.factIds!.includes(id)));
     const mcqHit = hit.filter((i) => i.type === "mcq" && i.options?.length === 4);
@@ -449,6 +510,7 @@ export function markRead(state: EngineState, unit: LearningUnit, now = Date.now(
   return {
     ...state,
     learner,
+    preferredChapter: followChapter(state.preferredChapter, unit.chapter),
     lastConceptIds: unique([...unit.conceptIds, ...state.lastConceptIds]),
     introducedThisSession: unique([...state.introducedThisSession, ...unit.conceptIds]),
   };
@@ -543,6 +605,7 @@ export function commitGrade(state: EngineState, confidence: number, now = Date.n
     pending: undefined,
     retrieveCount: state.retrieveCount + 1,
     lastConceptIds: unique([...item.conceptIds, ...state.lastConceptIds]),
+    preferredChapter: followChapter(state.preferredChapter, itemChapter(item)),
   };
 }
 
@@ -649,6 +712,7 @@ export function openChapter(state: EngineState, chapter: ChapterId): EngineState
   return {
     ...state,
     preferredChapter: chapter,
+    chapterPinned: true,
     forceSectionId: undefined,
     lastConceptIds: [],
     queueHint: null,
@@ -661,6 +725,7 @@ export function openSection(state: EngineState, sectionId: string): EngineState 
   return {
     ...state,
     preferredChapter: section?.chapter ?? state.preferredChapter,
+    chapterPinned: true,
     forceSectionId: sectionId,
     lastConceptIds: [],
     queueHint: null,

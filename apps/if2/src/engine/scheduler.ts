@@ -96,7 +96,7 @@ export function nextNewSection(model: LearnerModel, chapter?: ChapterId): BookSe
   };
 
   if (chapter) {
-    return pickFrom(chapter, true) ?? sections.find((s) => s.chapter === chapter) ?? nextNewSection(model);
+    return pickFrom(chapter, true);
   }
   for (const ch of [1, 2, 3, 4, 5, 6] as const) {
     const found = pickFrom(ch, false);

@@ -26,6 +26,7 @@ import {
   grade,
   markRead,
   nextActivity,
+  openChapter,
   openSection,
   signal,
   startSession,
@@ -182,6 +183,46 @@ describe("session engine", () => {
     const a = nextActivity(s);
     expect(a.kind).toBe("read");
     if (a.kind === "read") expect(a.section.chapter).toBe(4);
+  });
+
+  it("stays in chapter 2 after an answer even when chapter 1 is due", () => {
+    const now = Date.now();
+    let learner = createLearner();
+    const ch1 = loadCurriculum().concepts.filter((c) => c.chapter === 1).slice(0, 8);
+    for (const c of ch1) {
+      learner.concepts[c.id] = {
+        ...emptyState(c.id),
+        exposures: 2,
+        successfulRetrievals: 1,
+        nextDueAt: now - 60_000,
+        lastSeenAt: now - 86_400_000,
+        lastSuccessAt: now - 86_400_000,
+        estimatedMastery: 0.25,
+      };
+    }
+    let s = startSession(learner, now);
+    s = openChapter(s, 2);
+    let a = nextActivity(s, now);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.section.chapter).toBe(2);
+      s = markRead(s, a.unit, now);
+      a = nextActivity(s, now);
+    }
+    expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      const cid = a.item.conceptIds[0]!;
+      expect(loadCurriculum().concepts.find((c) => c.id === cid)?.chapter).toBe(2);
+      const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "";
+      s = beginGrade(s, a.item, ans, 8000, false, now);
+      s = commitGrade(s, 4, now);
+      a = nextActivity(s, now + 1000);
+    }
+    if (a.kind === "read") expect(a.section.chapter).toBe(2);
+    if (a.kind === "retrieve") {
+      const cid = a.item.conceptIds[0]!;
+      expect(loadCurriculum().concepts.find((c) => c.id === cid)?.chapter).toBe(2);
+    }
   });
 
   it("opens chapter 6 on a who-was-hurt hold, not a table dump", () => {
