@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   DEFAULT_KOKORO,
   KOKORO_VOICES,
+  STUDIO_MIX,
   loadKokoroSettings,
   probeKokoro,
   saveKokoroSettings,
@@ -43,14 +44,25 @@ export function ListenBar({
   function persist(next: KokoroSettings) {
     saveKokoroSettings(next);
     setSettings(next);
+    if (typeof window === "undefined") return;
+    try {
+      const u = new URL(window.location.href);
+      if (next.baseUrl.startsWith("https://")) u.searchParams.set("kokoro", next.baseUrl);
+      else u.searchParams.delete("kokoro");
+      window.history.replaceState(null, "", u);
+    } catch {
+      /* ignore */
+    }
   }
+
+  const voiceInList = KOKORO_VOICES.some((v) => v.id === settings.voice);
 
   return (
     <div className="listen-wrap">
       <div className="listen-bar" role="group" aria-label="Read this section aloud">
         {listen === "idle" && (
           <button type="button" onClick={onPlay}>
-            Listen to this section
+            Listen to this lesson
           </button>
         )}
         {listen === "loading" && (
@@ -75,7 +87,7 @@ export function ListenBar({
         )}
         <span className="meta" style={{ margin: 0 }}>
           {status === "up"
-            ? `Kokoro · ${settings.voice}`
+            ? `Kokoro · ${settings.voice === STUDIO_MIX ? "studio mix" : settings.voice}`
             : status === "down"
               ? "Kokoro not reachable"
               : "Kokoro · checking"}
@@ -88,7 +100,9 @@ export function ListenBar({
       {open && (
         <div className="kokoro-settings">
           <p className="meta" style={{ marginTop: 0 }}>
-            Uses the GPU container on port 8880. Leave it running. Same words as the page.
+            Leave the LOQ Docker on port 8880 all day. On the work PC, paste the{" "}
+            <code>https://….trycloudflare.com</code> tunnel and bookmark this tab — the address is stored as{" "}
+            <code>?kokoro=</code>. Same words as the page. Default voice is a British studio mix (Isabella + Heart).
           </p>
           <label>
             Kokoro URL
@@ -100,15 +114,25 @@ export function ListenBar({
           </label>
           <label>
             Voice
-            <select
-              value={settings.voice}
-              onChange={(ev) => persist({ ...settings, voice: ev.target.value })}
-            >
+            <select value={settings.voice} onChange={(ev) => persist({ ...settings, voice: ev.target.value })}>
+              {!voiceInList && (
+                <option value={settings.voice}>{settings.voice}</option>
+              )}
               {KOKORO_VOICES.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.label}
                 </option>
               ))}
+            </select>
+          </label>
+          <label>
+            English
+            <select
+              value={settings.langCode}
+              onChange={(ev) => persist({ ...settings, langCode: ev.target.value })}
+            >
+              <option value="b">British (recommended for IF2)</option>
+              <option value="a">American</option>
             </select>
           </label>
           <button

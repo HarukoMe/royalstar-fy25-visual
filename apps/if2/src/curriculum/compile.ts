@@ -5,6 +5,7 @@ import { DEPTH_FACTS } from "./facts-depth";
 import { QUESTIONS, type AuthoredQuestion } from "./questions";
 import { QUESTIONS_MORE } from "./questions-more";
 import type { ChapterId } from "../engine/types";
+import { chapterHold, comparisonForSection, roleForFact, trapsForSection } from "./book-layer";
 
 export const ALL_FACTS: AuthoredFact[] = [...FACTS, ...MORE_FACTS, ...DEPTH_FACTS];
 export const ALL_QUESTIONS: AuthoredQuestion[] = [...QUESTIONS, ...QUESTIONS_MORE];
@@ -98,7 +99,7 @@ export function compileUnits(): LearningUnit[] {
         sources: f.sources,
       })),
       prediction: facts.find((f) => f.prediction)?.prediction,
-      comparisonTable: comparisonFor(c.id, facts),
+      comparisonTable: comparisonForSection(c.chapter, facts, 0),
     });
   }
   return units.sort((a, b) => {
@@ -143,9 +144,32 @@ export function compileSections(): BookSection[] {
   for (const b of buckets) countByChapter[b.chapter] += 1;
   const seenInChapter: Record<ChapterId, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
   const used = new Set<string>();
+  const titleByConcept: Record<string, string> = {};
+  for (const f of ALL_FACTS) {
+    if (!titleByConcept[f.conceptId]) titleByConcept[f.conceptId] = f.title;
+  }
   return buckets.map((b) => {
     seenInChapter[b.chapter] += 1;
     const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
+    const reading = b.facts.flatMap((f, i) => {
+      const role = roleForFact(f, i);
+      const blocks: BookSection["reading"] = [
+        {
+          heading: f.title === b.title ? undefined : f.title,
+          body: plain(f.claim),
+          sources: f.sources,
+          role,
+        },
+      ];
+      if (f.extra) {
+        blocks.push({
+          body: f.extra,
+          sources: f.sources,
+          role: f.kind === "exclusion" ? "trap" : "why",
+        });
+      }
+      return blocks;
+    });
     return {
       id: slugSection(b.chapter, b.title, used),
       chapter: b.chapter,
@@ -155,12 +179,10 @@ export function compileSections(): BookSection[] {
       sectionCountInChapter: countByChapter[b.chapter],
       conceptIds,
       factIds: b.facts.map((f) => f.id),
-      reading: b.facts.map((f) => ({
-        heading: f.title === b.title ? undefined : f.title,
-        body: readingFor(f),
-        sources: f.sources,
-      })),
-      comparisonTable: comparisonFor(conceptIds.find((id) => id === "motor-cover-levels") ?? conceptIds[0], b.facts),
+      lede: seenInChapter[b.chapter] === 1 ? chapterHold(b.chapter) : undefined,
+      traps: trapsForSection(b.facts, titleByConcept),
+      reading,
+      comparisonTable: comparisonForSection(b.chapter, b.facts, seenInChapter[b.chapter]),
     };
   });
 }
@@ -180,21 +202,6 @@ export function sectionAsUnit(section: BookSection): LearningUnit {
       sources: r.sources,
     })),
     comparisonTable: section.comparisonTable,
-  };
-}
-
-function comparisonFor(conceptId: string, facts: AuthoredFact[]): LearningUnit["comparisonTable"] {
-  if (!facts.some((f) => f.id === "m-four-levels")) return undefined;
-  if (conceptId !== "motor-cover-levels") return undefined;
-  return {
-    caption: "Private motor cover compared (IF2 study text / key facts)",
-    headers: ["Level", "Own vehicle", "Third party injury", "Third party property (private car)"],
-    rows: [
-      ["RTA only", "None", "Unlimited", "£1.2 million (minimum)"],
-      ["TPO", "None", "Unlimited", "Usually £20 million"],
-      ["TPFT", "Fire, lightning, explosion, theft", "Unlimited", "Usually £20 million"],
-      ["Comprehensive", "Accidental & malicious damage (‘all risks’ of own damage, with exclusions)", "Unlimited", "Usually £20 million"],
-    ],
   };
 }
 

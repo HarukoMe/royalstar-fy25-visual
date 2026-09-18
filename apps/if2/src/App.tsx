@@ -21,10 +21,10 @@ export function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app ${mode === "focus" ? "desk-mode" : ""}`}>
       <header className="topbar">
         <h1 className="brand">
-          IF2 <span>Chapters 1–6</span>
+          IF2 <span>study book · 1–6</span>
         </h1>
         {mode === "focus" ? (
           <nav>

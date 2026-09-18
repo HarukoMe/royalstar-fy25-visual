@@ -76,6 +76,14 @@ export type LearningUnit = {
   comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
 };
 
+export type ReadingRole = "open" | "fact" | "why" | "trap";
+
+export type BookTrap = {
+  title: string;
+  body: string;
+  sources: Provenance[];
+};
+
 /** One textbook section (chapter + Key Facts heading), not a single concept unit. */
 export type BookSection = {
   id: string;
@@ -86,7 +94,9 @@ export type BookSection = {
   sectionCountInChapter: number;
   conceptIds: string[];
   factIds: string[];
-  reading: { heading?: string; body: string; sources: Provenance[] }[];
+  lede?: string;
+  traps: BookTrap[];
+  reading: { heading?: string; body: string; sources: Provenance[]; role?: ReadingRole }[];
   comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
 };
 

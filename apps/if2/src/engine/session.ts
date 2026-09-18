@@ -100,6 +100,7 @@ export type EngineState = {
   lastItemId?: string;
   rereadOnUnit?: string;
   preferredChapter?: ChapterId;
+  forceSectionId?: string;
   ownWords: boolean;
 };
 
@@ -133,6 +134,15 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
   if (state.queueHint) {
     const act = adapt(state, state.queueHint, now, curr);
     return act;
+  }
+
+  if (state.forceSectionId) {
+    const jumped = curr.sections.find((s) => s.id === state.forceSectionId);
+    state.forceSectionId = undefined;
+    if (jumped) {
+      decide(state, now, "Opened a chosen book section", [`ch.${jumped.chapter} ${jumped.title}`], "read");
+      return readAct(jumped, false);
+    }
   }
 
   const lastIntro = state.lastConceptIds[0];
@@ -347,11 +357,34 @@ function readSpeech(section: BookSection, shortened: boolean): SpeechAct[] {
       interruptible: true,
     },
   ];
+  if (section.lede && !shortened) {
+    acts.push({ kind: "narrate", text: section.lede, interruptible: true });
+  }
+  const table = !shortened ? section.comparisonTable : undefined;
+  if (table) {
+    acts.push({
+      kind: "narrate",
+      text: `Comparison. ${table.caption}. Columns: ${table.headers.join(", ")}.`,
+      interruptible: true,
+    });
+    for (const row of table.rows) {
+      acts.push({
+        kind: "narrate",
+        text: row.map((cell, i) => `${table.headers[i] ?? "item"}: ${cell}`).join(". "),
+        interruptible: true,
+      });
+    }
+  }
   for (const block of blocks) {
     if (block.heading) acts.push({ kind: "narrate", text: block.heading, interruptible: true });
     for (const para of block.body.split(/\n\n+/)) {
       const text = para.trim();
       if (text) acts.push({ kind: "narrate", text, interruptible: true });
+    }
+  }
+  if (!shortened) {
+    for (const trap of section.traps) {
+      acts.push({ kind: "narrate", text: `Exam trap. ${trap.title}. ${trap.body}`, interruptible: true });
     }
   }
   return acts;
@@ -379,7 +412,13 @@ export function markRead(state: EngineState, unit: LearningUnit, now = Date.now(
       };
     }
   }
-  state.log.events.push({ at: now, type: "read", conceptIds: unit.conceptIds, factIds: unit.factIds });
+  state.log.events.push({
+    at: now,
+    type: "read",
+    conceptIds: unit.conceptIds,
+    factIds: unit.factIds,
+    payload: { sectionId: unit.id },
+  });
   return {
     ...state,
     learner,
@@ -583,6 +622,19 @@ export function openChapter(state: EngineState, chapter: ChapterId): EngineState
   return {
     ...state,
     preferredChapter: chapter,
+    forceSectionId: undefined,
+    lastConceptIds: [],
+    queueHint: null,
+    pending: undefined,
+  };
+}
+
+export function openSection(state: EngineState, sectionId: string): EngineState {
+  const section = loadCurriculum().sections.find((s) => s.id === sectionId);
+  return {
+    ...state,
+    preferredChapter: section?.chapter ?? state.preferredChapter,
+    forceSectionId: sectionId,
     lastConceptIds: [],
     queueHint: null,
     pending: undefined,

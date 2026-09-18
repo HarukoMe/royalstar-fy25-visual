@@ -12,8 +12,9 @@ from pathlib import Path
 from pypdf import PdfReader
 
 UPLOADS = Path("/home/ubuntu/.cursor/projects/workspace/uploads")
-KF = UPLOADS / "IF2KF61_2026_online_574a.pdf"
-ST = UPLOADS / "IF2TB61_2026_online-17-264-5-19_8705.pdf"
+KF = next(UPLOADS.glob("IF2KF61_2026_online*.pdf"))
+ST_MATCH = list(UPLOADS.glob("IF2TB61*.pdf"))
+ST = ST_MATCH[0] if ST_MATCH else None
 OUT = Path(__file__).resolve().parents[1] / "src" / "curriculum" / "generated"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -167,6 +168,8 @@ def extract_kf():
 
 
 def extract_study_ch1():
+    if ST is None or not Path(ST).exists():
+        return None
     reader = PdfReader(str(ST))
     pages = []
     for i, page in enumerate(reader.pages):
@@ -184,11 +187,18 @@ def extract_study_ch1():
 def main():
     kf = extract_kf()
     study = extract_study_ch1()
+    existing_study = []
+    existing_path = OUT / "sources.json"
+    if existing_path.exists():
+        try:
+            existing_study = json.loads(existing_path.read_text()).get("studyText") or []
+        except json.JSONDecodeError:
+            existing_study = []
     payload = {
         "scope": "chapters-1-to-6",
         "syllabusYear": 2026,
         "keyFacts": kf,
-        "studyText": [study],
+        "studyText": [study] if study else existing_study,
         "excluded": "Chapters 7 onward were not ingested.",
     }
     path = OUT / "sources.json"

@@ -29,15 +29,19 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Open the printed URL (or the GitHub Pages study URL). **Study** starts on a book section: chapter → heading → sourced prose, one section at a time. **Listen to this section** is Kokoro on `http://127.0.0.1:8880` (default voice `bf_emma`, British). Leave that Docker container running. Play / pause / resume are real audio, same words as the page. After reading, **Question on this section** is a four-option MCQ — lock, then feedback.
+Open the printed URL (or the GitHub Pages study URL). **Study** is a book: cream page, burgundy spine, chapter rail, Key Facts section, trap callouts, then an A–D check. **Listen to this lesson** uses Kokoro on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the page (including comparison tables and traps).
 
-If GitHub Pages is HTTPS and Kokoro is HTTP, the browser may block it. Leave Docker running, then on the home PC expose HTTPS and paste that URL under **Voice**:
+If GitHub Pages is HTTPS and Kokoro is HTTP, the browser may block it. Leave Docker running on the home PC, then expose HTTPS and paste that URL under **Voice**:
 
 ```bash
 docker run --rm cloudflare/cloudflared:latest tunnel --url http://host.docker.internal:8880
 ```
 
-Copy the `https://….trycloudflare.com` URL into Study → Voice → Kokoro URL. Work browser, no install.
+Copy the `https://….trycloudflare.com` URL into Study → Voice → Kokoro URL, or bookmark:
+
+`https://harukome.github.io/royalstar-fy25-visual/?kokoro=https://YOUR-TUNNEL.trycloudflare.com`
+
+Work browser, no install. The `?kokoro=` address is stored. Chapter 6 (liability) is in the same book as 1–5.
 
 The **Map** is optional: coverage, mix-ups, and Export/Import if you switch machines. Course content is taken from the supplied IF2 syllabus, examination guide, 2026 key facts (chs 1–6) and the chapter 1 study-text extract. Pedagogy is in `apps/if2/docs/learning-science.md`.
 

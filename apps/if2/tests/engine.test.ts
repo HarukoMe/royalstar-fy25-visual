@@ -11,11 +11,28 @@ import {
 } from "../src/engine/learner";
 import { noteAnswer, emptyAttention } from "../src/engine/attention";
 import { scheduleAfterRetrieval } from "../src/engine/scheduler";
-import { beginGrade, commitGrade, endSession, grade, markRead, nextActivity, signal, startSession } from "../src/engine/session";
+import {
+  applyKokoroFromSearch,
+  chunkForKokoro,
+  DEFAULT_KOKORO,
+  normalizeBaseUrl,
+  parseVoiceIds,
+  speechTexts,
+} from "../src/engine/kokoro";
+import {
+  beginGrade,
+  commitGrade,
+  endSession,
+  grade,
+  markRead,
+  nextActivity,
+  openSection,
+  signal,
+  startSession,
+} from "../src/engine/session";
 import { tutorExplain } from "../src/engine/tutor";
 import { finishExam, startExam } from "../src/engine/exam";
 import { shuffleMcq } from "../src/engine/shuffle";
-import { chunkForKokoro, normalizeBaseUrl, parseVoiceIds, speechTexts } from "../src/engine/kokoro";
 
 describe("curriculum integrity", () => {
   it("stays inside chapters 1–6 and LO 1.1", () => {
@@ -23,7 +40,7 @@ describe("curriculum integrity", () => {
     expect(report.problems).toEqual([]);
     const { stats, concepts, items } = loadCurriculum();
     expect(stats.factsByChapter[1]).toBeGreaterThan(10);
-    expect(stats.factsByChapter[6]).toBeGreaterThan(8);
+    expect(stats.factsByChapter[6]).toBeGreaterThan(20);
     expect(concepts.every((c) => c.chapter >= 1 && c.chapter <= 6)).toBe(true);
     expect(stats.mcq).toBeGreaterThan(120);
     expect(stats.concepts).toBeGreaterThan(70);
@@ -127,6 +144,12 @@ describe("session engine", () => {
     expect(sections.flatMap((s) => s.factIds).length).toBe(facts.length);
     expect(stats.sections).toBe(sections.length);
     expect(sections.every((s) => s.chapter >= 1 && s.chapter <= 6)).toBe(true);
+    expect(sections.filter((s) => s.chapter === 6).length).toBeGreaterThan(8);
+    expect(sections.some((s) => s.traps.length > 0)).toBe(true);
+    expect(sections.filter((s) => s.chapter === 6).some((s) => s.comparisonTable)).toBe(true);
+    expect(facts.some((f) => f.id === "l-el-min-limit" && f.claim.includes("£5 million"))).toBe(true);
+    expect(DEFAULT_KOKORO.voice).toContain("af_heart");
+    expect(DEFAULT_KOKORO.langCode).toBe("b");
   });
 
   it("uses a four-option MCQ after reading, not a typing prompt", () => {
@@ -150,6 +173,30 @@ describe("session engine", () => {
     const a = nextActivity(s);
     expect(a.kind).toBe("read");
     if (a.kind === "read") expect(a.section.chapter).toBe(4);
+  });
+
+  it("opens chapter 6 on the liability book with a comparison table", () => {
+    const s = startSession(createLearner(), Date.now(), { chapter: 6 });
+    const a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.section.chapter).toBe(6);
+      expect(a.section.chapterTitle).toMatch(/Liability/i);
+      expect(a.section.comparisonTable?.rows.length).toBeGreaterThan(3);
+      expect(a.section.lede).toMatch(/who was hurt/i);
+      expect(a.speech.some((x) => /Exam trap|Comparison|£5 million|employers/i.test(x.text))).toBe(true);
+    }
+  });
+
+  it("jumps to a named section from the chapter TOC", () => {
+    const curr = loadCurriculum();
+    const target = curr.sections.find((s) => s.chapter === 6 && /extended/i.test(s.title));
+    expect(target).toBeTruthy();
+    let s = startSession(createLearner());
+    s = openSection(s, target!.id);
+    const a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") expect(a.section.id).toBe(target!.id);
   });
 
   it("switches to retrieval on inactivity rather than idling on reading", () => {
@@ -330,5 +377,22 @@ describe("kokoro speech", () => {
     const chunks = chunkForKokoro(["aaa", "bbb", "ccc"], 10);
     expect(chunks.join("|")).toBe("aaa\n\nbbb|ccc");
     expect(parseVoiceIds({ voices: [{ id: "bf_emma" }, { id: "af_bella" }] })).toEqual(["bf_emma", "af_bella"]);
+  });
+
+  it("reads a work-PC ?kokoro= tunnel from the query string", () => {
+    const mem = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => mem.set(k, v),
+      removeItem: (k: string) => mem.delete(k),
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const next = applyKokoroFromSearch("?kokoro=https://demo.trycloudflare.com&voice=bf_isabella");
+    expect(next.baseUrl).toBe("https://demo.trycloudflare.com");
+    expect(next.voice).toBe("bf_isabella");
+    expect(next.langCode).toBe("b");
   });
 });

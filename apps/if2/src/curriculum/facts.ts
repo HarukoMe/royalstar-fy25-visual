@@ -1389,12 +1389,42 @@ export const FACTS: AuthoredFact[] = [
 
 export const CHAPTER_META: Record<
   1 | 2 | 3 | 4 | 5 | 6,
-  { title: string; outcome: string; examShare: string }
+  { title: string; outcome: string; examShare: string; hold: string }
 > = {
-  1: { title: "Motor insurance", outcome: "1.1", examShare: "Largest product class inside LO 1 (~36 questions)" },
-  2: { title: "Health insurance", outcome: "1.1", examShare: "PA/sickness, medical expenses, travel PA" },
-  3: { title: "Package policies", outcome: "1.1", examShare: "Household and commercial packages" },
-  4: { title: "Property insurance", outcome: "1.1", examShare: "Fire, theft, glass, money" },
-  5: { title: "Pecuniary insurance", outcome: "1.1", examShare: "Legal expenses and business interruption" },
-  6: { title: "Liability insurance", outcome: "1.1", examShare: "EL, PL, products, PI, D&O, trustees, EW, cyber" },
+  1: {
+    title: "Motor insurance",
+    outcome: "1.1",
+    examShare: "Largest product class inside LO 1 (~36 questions)",
+    hold: "The exam lives on the ladder: RTA only, TPO, TPFT, comprehensive. Injury is unlimited at every rung; third-party property damage is not.",
+  },
+  2: {
+    title: "Health insurance",
+    outcome: "1.1",
+    examShare: "PA/sickness, medical expenses, travel PA",
+    hold: "Personal accident pays a stated benefit. Medical expenses reimburses treatment. Occupation rates the accident element, not sickness.",
+  },
+  3: {
+    title: "Package policies",
+    outcome: "1.1",
+    examShare: "Household and commercial packages",
+    hold: "A package is several covers in one document because the customers look alike. Keep buildings, contents and extras in separate boxes.",
+  },
+  4: {
+    title: "Property insurance",
+    outcome: "1.1",
+    examShare: "Fire, theft, glass, money",
+    hold: "Name the peril before you name the policy. Fire, theft, glass and money answer different questions.",
+  },
+  5: {
+    title: "Pecuniary insurance",
+    outcome: "1.1",
+    examShare: "Legal expenses and business interruption",
+    hold: "Pecuniary is money that is not the building. Legal expenses is the cost of disputes; BI is trading after insured damage, and it needs a material damage claim first.",
+  },
+  6: {
+    title: "Liability insurance",
+    outcome: "1.1",
+    examShare: "EL, PL, products, PI, D&O, trustees, EW, cyber",
+    hold: "Ask three questions: who was hurt, was there property damage, and does the policy fire when the injury is caused or when the claim is made.",
+  },
 };

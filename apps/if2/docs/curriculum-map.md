@@ -18,7 +18,7 @@ Authoritative sources for this build:
 | LO1 products + associated services: **36** questions | Syllabus |
 | LO1.1 product features: motor, health, packaged, property, pecuniary, liability | Syllabus 1.1 |
 | LO1.2 non-insurance services | **Chapter 7 — out of scope this run** |
-| Specimen Q1–27, 34–36 mostly LO 1.1; Q28–33 mostly 1.2 | Exam guide answer key |
+| Specimen Q1–27, 29, 34–36 mostly LO 1.1; Q28, 30–33 mostly 1.2 (ch.7 non-insurance services — out of scope) | Exam guide 2026 answer key |
 
 Chapters 1–6 implement **syllabus 1.1** only. Exam-readiness overlay is weighted to LO1.1, not to a fake overall IF2 pass probability.
 
@@ -31,7 +31,7 @@ Chapters 1–6 implement **syllabus 1.1** only. Exam-readiness overlay is weight
 | 3 | Package policies | Why packages; household buildings/contents; indemnity vs new for old; subsidence excess; all risks away from risk address | Not supplied — Key Facts | 25–46 |
 | 4 | Property insurance | Fire & special perils; unoccupied; theft/hold-up; money vs theft (employee fraud); glass | Not supplied — Key Facts | 47–62 |
 | 5 | Pecuniary insurance | Legal expenses (not PL disputes); BI indemnity period; material damage proviso | Not supplied — Key Facts | 63–72 |
-| 6 | Liability insurance | EL compulsory & injury-only; PL; products; D&O claims-made; PI; trustees; extended warranty; cyber | Not supplied — Key Facts | 73–92 |
+| 6 | Liability insurance | EL compulsory, £5m statute / £10m practice, injury-only, vicarious; PL open policy + exclusions; products (injury during period, yearly aggregate); D&O/PI claims-made; trustees; extended warranty (12 months → up to 5 years); cyber first/third party | Not supplied — Key Facts | 73–92 |
 
 Where study text and key facts both exist (chapter 1), claims are reconciled: numbers such as £1.2 million RTA TPPD, £20 million private TPO TPPD, commercial ~£5 million / haulage £1.2 million, NCD two-year step-back, motorcycle accessories only with the machine, and RTA pay-then-recover appear in both. Green card / GCFA dates are taken from the study text and key facts, not from later news.
 
