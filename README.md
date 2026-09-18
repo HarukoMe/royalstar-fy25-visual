@@ -29,7 +29,7 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Open the printed URL (or the GitHub Pages study URL). **Study** is one quiet card at a time: a hold about the point (the mix-up, the figure, who was hurt), one sourced line, **Listen**, then an A–D check. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the card.
+Open the printed URL (or the GitHub Pages study URL). **Study** is the book, one Key Facts heading at a time: a hold so the point sticks, the sourced lesson, **Listen** if you want it read to you, then an A–D check on that lesson. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the card.
 
 If GitHub Pages is HTTPS and Kokoro is HTTP, the browser may block it. Leave Docker running on the home PC, then expose HTTPS and paste that URL under **Voice**:
 

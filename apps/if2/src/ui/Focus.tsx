@@ -217,10 +217,14 @@ export function Focus({
         {activity.kind === "read" && kernel && (
           <>
             <p className="kicker">
-              {chapter} · {CHAPTER_META[chapter].title}
+              {chapter} · {activity.section.title}
             </p>
             <h2 className="hold">{hold}</h2>
-            <p className="kernel">{kernel.body}</p>
+            <div className="reading">
+              {activity.unit.reading.map((r, i) => (
+                <p key={`${r.factId ?? "p"}-${i}`}>{r.body}</p>
+              ))}
+            </div>
             <ListenBar
               listen={listen}
               error={listenError}

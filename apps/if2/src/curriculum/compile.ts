@@ -18,12 +18,6 @@ function kernels(claim: string): string[] {
   return out;
 }
 
-function firstSentence(text: string): string {
-  const t = text.replace(/\s+/g, " ").trim();
-  const m = t.match(/^(.+?[.!?])(?:\s|$)/);
-  return m ? m[1] : t;
-}
-
 function plain(claim: string): string {
   return claim.replace(/\[\[(.+?)\]\]/g, "$1");
 }
@@ -157,13 +151,27 @@ export function compileSections(): BookSection[] {
   return buckets.map((b) => {
     seenInChapter[b.chapter] += 1;
     const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
-    const reading = b.facts.map((f, i) => ({
-      body: firstSentence(plain(f.claim)),
-      sources: f.sources,
-      role: roleForFact(f, i),
-      factId: f.id,
-      hold: holdForFact(f, titleByConcept),
-    }));
+    const reading = b.facts.flatMap((f, i) => {
+      const hold = holdForFact(f, titleByConcept);
+      const blocks: BookSection["reading"] = [
+        {
+          body: plain(f.claim),
+          sources: f.sources,
+          role: roleForFact(f, i),
+          factId: f.id,
+          hold,
+        },
+      ];
+      if (f.extra) {
+        blocks.push({
+          body: f.extra,
+          sources: f.sources,
+          role: f.kind === "exclusion" ? "trap" : "why",
+          factId: f.id,
+        });
+      }
+      return blocks;
+    });
     return {
       id: slugSection(b.chapter, b.title, used),
       chapter: b.chapter,

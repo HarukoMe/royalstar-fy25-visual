@@ -91,7 +91,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 2rem; line-height
   margin: 0 0 1.2rem;
 }
 .quiet-stage { align-items: flex-start; }
-.quiet-card { width: min(40rem, 100%); }
+.quiet-card { width: min(44rem, 100%); }
 .meta { color: var(--muted); font-size: 0.92rem; margin-top: 1.4rem; }
 .source { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; }
 

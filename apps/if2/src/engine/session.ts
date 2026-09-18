@@ -142,7 +142,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     state.forceSectionId = undefined;
     if (jumped) {
       decide(state, now, "Opened a chosen book section", [`ch.${jumped.chapter} ${jumped.title}`], "read");
-      return readAct(jumped, false, pickKernel(jumped, state.learner));
+      return readAct(jumped, false);
     }
   }
 
@@ -172,15 +172,14 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
 
   const section = nextNewSection(state.learner, state.preferredChapter);
   if (section) {
-    const kernel = pickKernel(section, state.learner);
-    const unseen = kernel.factId ? !(state.learner.seenFacts?.[kernel.factId] > 0) : true;
-    if (unseen) {
+    const unseen = section.factIds.filter((id) => !(state.learner.seenFacts?.[id] > 0));
+    if (unseen.length) {
       decide(state, now, "Read the next book section", [`ch.${section.chapter} ${section.title}`], "read");
-      return readAct(section, false, kernel);
+      return readAct(section, false);
     }
     const cid =
       section.conceptIds.find((id) => (state.learner.concepts[id]?.exposures ?? 0) === 0) ?? section.conceptIds[0];
-    const item = pickItem(curr, cid, state, { preferMcq: true, avoidId: state.lastItemId });
+    const item = pickItem(curr, cid, state, { preferMcq: true, avoidId: state.lastItemId, factIds: section.factIds });
     decide(state, now, "Question on the section just opened", ["testing effect"], "retrieve");
     return retrieveAct(item, "encode", state);
   }
@@ -215,12 +214,16 @@ function adapt(
   state.queueHint = null;
 
   if (signal === "inactivity" || signal === "reread-loop" || signal === "slow-latency") {
+    const hasRead = state.log.events.some((e) => e.type === "read");
     const cid = state.lastConceptIds[0] ?? dueConceptIds(state.learner, now)[0];
-    if (cid) {
-      const item = pickItem(curr, cid, state, { preferMcq: true });
+    if (cid && hasRead) {
+      const item = pickItem(curr, cid, state, { preferMcq: true, factIds: lastReadFacts(state) });
       decide(state, now, "Attention lapse → a question on the live section", [signal], "retrieve");
       return retrieveAct(item, "attention-switch", state);
     }
+    const stay = nextNewSection(state.learner, state.preferredChapter) ?? curr.sections[0];
+    decide(state, now, "Still on the unread lesson — do not quiz yet", [signal], "read");
+    return readAct(stay, false);
   }
   if (signal === "rapid-answer" || signal === "guessing" || signal === "rapid-click") {
     const cid = state.lastConceptIds[0];
@@ -244,7 +247,7 @@ function adapt(
     const section =
       curr.sections.find((s) => s.conceptIds.includes(cid ?? "")) ?? nextNewSection(state.learner) ?? curr.sections[0];
     decide(state, now, "Repeated error → shortened re-reading of this section", [signal], "read");
-    return readAct(section, true, pickKernel(section, state.learner));
+    return readAct(section, true);
   }
   if (signal === "confidence-mismatch") {
     const tenMinAgo = now - 10 * 60 * 1000;
@@ -266,7 +269,7 @@ function adapt(
   }
 
   const section = nextNewSection(state.learner) ?? curr.sections[0];
-  return readAct(section, true, pickKernel(section, state.learner));
+  return readAct(section, true);
 }
 
 function describeAdapt(s: AttentionSignal): string {
@@ -295,43 +298,43 @@ function lastReadFacts(state: EngineState): string[] {
   return [...state.log.events].reverse().find((e) => e.type === "read")?.factIds ?? [];
 }
 
-function pickKernel(section: BookSection, learner: LearnerModel): BookSection["reading"][number] {
-  const seen = learner.seenFacts ?? {};
-  return section.reading.find((r) => r.factId && !(seen[r.factId] > 0)) ?? section.reading[0];
+function lessonBlocks(section: BookSection, shortened: boolean): BookSection["reading"] {
+  return shortened ? section.reading.slice(0, 1) : section.reading;
 }
 
-function kernelUnit(section: BookSection, kernel: BookSection["reading"][number], shortened: boolean): LearningUnit {
+function lessonUnit(section: BookSection, blocks: BookSection["reading"], shortened: boolean): LearningUnit {
   const base = sectionAsUnit(section);
-  const cid = kernel.factId
-    ? loadCurriculum().factById[kernel.factId]?.conceptId
-    : section.conceptIds[0];
+  const factIds = unique(blocks.map((b) => b.factId).filter((id): id is string => Boolean(id)));
+  const curr = loadCurriculum();
+  const conceptIds = unique(
+    factIds.map((id) => curr.factById[id]?.conceptId).filter((id): id is string => Boolean(id))
+  );
   return {
     ...base,
-    title: kernel.heading || section.title,
-    conceptIds: cid ? [cid] : section.conceptIds.slice(0, 1),
-    factIds: kernel.factId ? [kernel.factId] : section.factIds.slice(0, 1),
+    conceptIds: conceptIds.length ? conceptIds : section.conceptIds,
+    factIds: factIds.length ? factIds : section.factIds,
     load: shortened ? 1 : base.load,
-    reading: [
-      {
-        heading: kernel.heading || section.title,
-        body: kernel.body,
-        sources: kernel.sources,
-        factId: kernel.factId,
-        hold: kernel.hold,
-      },
-    ],
+    reading: blocks.map((r) => ({
+      heading: r.heading || section.title,
+      body: r.body,
+      sources: r.sources,
+      factId: r.factId,
+      hold: r.hold,
+    })),
     comparisonTable: undefined,
   };
 }
 
-function readAct(section: BookSection, shortened: boolean, kernel: BookSection["reading"][number]): FocusActivity {
+function readAct(section: BookSection, shortened: boolean): FocusActivity {
+  const blocks = lessonBlocks(section, shortened);
+  const kernel = blocks.find((b) => b.hold) ?? blocks[0];
   return {
     kind: "read",
-    unit: kernelUnit(section, kernel, shortened),
+    unit: lessonUnit(section, blocks, shortened),
     section,
     shortened,
     kernel,
-    speech: readSpeech(section, kernel),
+    speech: readSpeech(section, blocks, kernel),
   };
 }
 
@@ -394,12 +397,20 @@ function pickItem(
   return chosen ?? curr.items[0];
 }
 
-function readSpeech(section: BookSection, kernel: BookSection["reading"][number]): SpeechAct[] {
+function readSpeech(
+  section: BookSection,
+  blocks: BookSection["reading"],
+  kernel: BookSection["reading"][number]
+): SpeechAct[] {
   const hold = kernel.hold || section.lede || "";
   const acts: SpeechAct[] = [];
   if (hold) acts.push({ kind: "narrate", text: hold, interruptible: true });
-  const body = kernel.body.trim();
-  if (body) acts.push({ kind: "narrate", text: body, interruptible: true });
+  for (const block of blocks) {
+    for (const para of block.body.split(/\n\n+/)) {
+      const text = para.trim();
+      if (text) acts.push({ kind: "narrate", text, interruptible: true });
+    }
+  }
   return acts;
 }
 

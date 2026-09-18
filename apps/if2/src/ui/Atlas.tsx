@@ -46,8 +46,8 @@ export function Atlas({
       <h2>Chapters 1–6 of IF2 (syllabus 1.1 products).</h2>
       <p className="lede">
         {curr.stats.concepts} concepts · {curr.stats.facts} sourced claims · {curr.stats.sections} sections ·{" "}
-        {curr.stats.mcq} multiple-choice items ({curr.stats.examStyleMcq} exam-shaped). Study is one hold, one sourced
-        line, listen, then A–D. This map is for gaps, mix-ups and a backup if you switch computers.
+        {curr.stats.mcq} multiple-choice items ({curr.stats.examStyleMcq} exam-shaped). Study is read the lesson, hear
+        it if you want, then A–D on what you just read. This map is for gaps, mix-ups and a backup if you switch computers.
       </p>
       <div className="row">
         <button onClick={() => onStart()}>{exposed ? "Continue reading" : "Start reading"}</button>

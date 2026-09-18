@@ -122,14 +122,18 @@ describe("mastery vs accessibility", () => {
 });
 
 describe("session engine", () => {
-  it("starts with a quiet card: one hold and one sourced line, not a quiz dump", () => {
+  it("starts with the book lesson, not a quiz on unread material", () => {
     const s = startSession(createLearner(), Date.now());
     const a = nextActivity(s, Date.now());
     expect(a.kind).toBe("read");
     if (a.kind === "read") {
       expect(a.section.chapter).toBe(1);
-      expect(a.unit.factIds).toHaveLength(1);
+      expect(a.section.title).toMatch(/Private motor/i);
       expect(a.kernel.hold!.length).toBeGreaterThan(20);
+      expect(a.unit.reading.length).toBeGreaterThan(1);
+      const lesson = a.unit.reading.map((r) => r.body).join(" ");
+      expect(lesson).toMatch(/illegal to drive/i);
+      expect(lesson).toMatch(/SORN|Statutory Off Road/i);
       expect(a.speech.some((x) => /This unit is/.test(x.text))).toBe(false);
       const claim = loadCurriculum().facts[0]!.claim.replace(/\[\[|\]\]/g, "");
       expect(a.speech.some((x) => x.text.includes(claim.slice(0, 40)))).toBe(true);
@@ -155,10 +159,11 @@ describe("session engine", () => {
     expect(DEFAULT_KOKORO.langCode).toBe("b");
   });
 
-  it("uses a four-option MCQ after reading, not a typing prompt", () => {
+  it("uses a four-option MCQ on the lesson just read", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
     expect(a.kind).toBe("read");
+    const taught = a.kind === "read" ? a.unit.factIds : [];
     if (a.kind === "read") {
       s = markRead(s, a.unit);
       a = nextActivity(s);
@@ -168,6 +173,7 @@ describe("session engine", () => {
       expect(a.item.type).toBe("mcq");
       expect(a.item.options).toHaveLength(4);
       expect(a.speech[0]?.text).toBe(a.item.prompt);
+      expect(a.item.factIds.some((id) => taught.includes(id))).toBe(true);
     }
   });
 
@@ -188,7 +194,9 @@ describe("session engine", () => {
       expect(a.section.comparisonTable?.rows.length).toBeGreaterThan(3);
       expect(a.section.lede).toMatch(/who was hurt/i);
       expect(a.kernel.hold).toMatch(/who was hurt/i);
-      expect(a.unit.factIds).toHaveLength(1);
+      const lesson = a.unit.reading.map((r) => r.body).join(" ");
+      expect(lesson).toMatch(/employers/i);
+      expect(a.unit.reading.length).toBeGreaterThan(0);
       const joined = a.speech.map((x) => x.text).join(" ");
       expect(joined).toMatch(/who was hurt|employers/i);
       expect(joined).not.toMatch(/Comparison\.|Exam trap/);
@@ -232,15 +240,14 @@ describe("session engine", () => {
     }
   });
 
-  it("does not skip later facts that share a concept", () => {
+  it("moves to the next book heading after a lesson and its check", () => {
     const first = loadCurriculum().sections[0]!;
     expect(first.factIds.length).toBeGreaterThan(1);
     let s = startSession(createLearner());
     let a = nextActivity(s);
     expect(a.kind).toBe("read");
-    const firstFact = a.kind === "read" ? a.unit.factIds[0] : "";
     if (a.kind === "read") {
-      expect(a.unit.factIds).toHaveLength(1);
+      expect(a.unit.factIds).toEqual(first.factIds);
       s = markRead(s, a.unit);
       a = nextActivity(s);
     }
@@ -253,8 +260,7 @@ describe("session engine", () => {
     }
     expect(a.kind).toBe("read");
     if (a.kind === "read") {
-      expect(a.unit.factIds[0]).not.toBe(firstFact);
-      expect(first.factIds).toContain(a.unit.factIds[0]);
+      expect(a.section.id).not.toBe(first.id);
     }
   });
 
