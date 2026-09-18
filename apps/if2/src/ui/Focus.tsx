@@ -191,6 +191,12 @@ export function Focus({
     liveSection?.chapter ?? (item?.chapter as ChapterId | undefined) ?? engine.preferredChapter ?? 1;
   const kernel = activity.kind === "read" ? activity.kernel : undefined;
   const hold = kernel?.hold || liveSection?.lede || CHAPTER_META[chapter].hold;
+  const lessonHay = (activity.kind === "read" ? activity.unit.reading : [])
+    .map((r) => `${r.body} ${(r.bullets ?? []).join(" ")}`)
+    .join(" ")
+    .toLowerCase();
+  const trap = activity.kind === "read" ? activity.section.traps[0] : undefined;
+  const showTrap = Boolean(trap && !lessonHay.includes(trap.body.slice(0, 48).toLowerCase()));
 
   return (
     <div
@@ -258,9 +264,9 @@ export function Focus({
                 </tbody>
               </table>
             )}
-            {activity.section.traps[0] && (
+            {showTrap && trap && (
               <p className="mixup">
-                Keep this apart. {activity.section.traps[0].body}
+                Keep this apart. {trap.body}
               </p>
             )}
             <ListenBar

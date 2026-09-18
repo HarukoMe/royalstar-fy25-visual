@@ -7,6 +7,8 @@ const FACT_HOLDS: Record<string, string> = {
     "The specimen exception is a SORN to the DVLA. A garage or a private driveway is not that exception.",
   "m-sorn-exam":
     "The specimen exception is a SORN to the DVLA. A garage or a private driveway is not that exception.",
+  "m-rta-scope":
+    "RTA only is the legal minimum on a road or public place. Injury is unlimited; third-party property is not.",
   "m-four-levels":
     "The exam lives on the ladder: RTA only, TPO, TPFT, comprehensive. Injury is unlimited at every rung; third-party property damage is not.",
   "m-rta-tppd":

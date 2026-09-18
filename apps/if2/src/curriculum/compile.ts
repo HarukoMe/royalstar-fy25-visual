@@ -194,7 +194,7 @@ export function compileSections(): BookSection[] {
           hold: reading.some((r) => r.hold) ? undefined : holdForFact(f, titleByConcept),
         });
       }
-      if (f.extra && !alreadyOnPage(hayOf(), f.extra)) {
+      if (f.extra && !(sourced && sourced.text.length > 500) && !alreadyOnPage(hayOf(), f.extra)) {
         reading.push({
           body: f.extra,
           sources: f.sources,
