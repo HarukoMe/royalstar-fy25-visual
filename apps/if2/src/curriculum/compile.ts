@@ -185,7 +185,12 @@ export function compileSections(): BookSection[] {
     b.facts.forEach((f, i) => {
       const claim = plain(f.claim);
       const hay = hayOf();
-      if (!sourced?.chunks.length || !alreadyOnPage(hay, claim)) {
+      const examBit = f.sources.some((s) => s.kind === "exam-guide");
+      const needClaim =
+        !sourced?.chunks.length ||
+        examBit ||
+        (sourced.text.length < 400 && !alreadyOnPage(hay, claim));
+      if (needClaim && !alreadyOnPage(hay, claim)) {
         reading.push({
           body: claim,
           sources: f.sources,
