@@ -7,7 +7,7 @@ import {
   examReadinessFor,
   recomputeMastery,
 } from "./learner";
-import { dueConceptIds, nextNewSection, scheduleAfterRetrieval, scheduleWhy } from "./scheduler";
+import { nextNewSection, scheduleAfterRetrieval, scheduleWhy } from "./scheduler";
 import type {
   ActivityKind,
   AttentionSignal,
@@ -104,6 +104,8 @@ export type EngineState = {
   /** True when the learner picked a chapter pill — do not send them back to chapter 1. */
   chapterPinned?: boolean;
   forceSectionId?: string;
+  /** Learner asked for a check on the lesson they just read. */
+  wantCheck?: boolean;
   ownWords: boolean;
 };
 
@@ -134,15 +136,6 @@ function conceptChapter(conceptId: string): ChapterId | undefined {
 
 function itemChapter(item: PracticeItem): ChapterId | undefined {
   return item.chapter ?? conceptChapter(item.conceptIds[0] ?? "");
-}
-
-function dueHere(state: EngineState, now: number): string[] {
-  const ch = state.preferredChapter;
-  return dueConceptIds(state.learner, now).filter((id) => {
-    if (!shouldReviewNow(state, id, now)) return false;
-    if (ch && conceptChapter(id) !== ch) return false;
-    return true;
-  });
 }
 
 function nextLesson(state: EngineState) {
@@ -184,27 +177,14 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
   }
 
   const lastIntro = state.lastConceptIds.find((id) => !state.preferredChapter || conceptChapter(id) === state.preferredChapter);
-  if (lastIntro) {
-    const st = state.learner.concepts[lastIntro];
-    const justRead = state.log.events.some((e) => e.type === "read" && e.conceptIds?.includes(lastIntro));
-    const retrievedThisSession = state.log.events.some(
-      (e) => e.type === "graded" && e.payload?.prediction !== true && e.conceptIds?.includes(lastIntro)
-    );
-    const noRetrieval = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) === 0 && !retrievedThisSession;
-    if (justRead && noRetrieval) {
-      const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId, factIds: lastReadFacts(state) });
-      decide(state, now, "One MCQ after the section just read", ["testing effect", lastIntro], "retrieve");
-      return retrieveAct(item, "encode", state);
-    }
-  }
-
-  const due = dueHere(state, now);
-  const mixReviews = due.length > 0 && (state.retrieveCount % 3 === 2 || state.introducedThisSession.length >= 1);
-
-  if (mixReviews && due[0]) {
-    const item = pickItem(curr, due[0], state, { preferMcq: true, avoidId: state.lastItemId });
-    decide(state, now, "Due / at-risk concept interleaved", [`concept ${due[0]} due or at forgetting risk`], "retrieval");
-    return retrieveAct(item, "due-review", state);
+  if (state.wantCheck) {
+    state.wantCheck = false;
+    const cid = lastIntro ?? lastReadFacts(state)[0];
+    const conceptId =
+      cid && loadCurriculum().factById[cid] ? loadCurriculum().factById[cid]!.conceptId : lastIntro ?? curr.concepts[0].id;
+    const item = pickItem(curr, conceptId, state, { preferMcq: true, avoidId: state.lastItemId, factIds: lastReadFacts(state) });
+    decide(state, now, "Check on the lesson just read, because the learner asked", [conceptId], "retrieve");
+    return retrieveAct(item, "encode", state);
   }
 
   const section = nextLesson(state);
@@ -214,11 +194,8 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
       decide(state, now, "Read the next book section", [`ch.${section.chapter} ${section.title}`], "read");
       return readAct(section, false);
     }
-    const cid =
-      section.conceptIds.find((id) => (state.learner.concepts[id]?.exposures ?? 0) === 0) ?? section.conceptIds[0];
-    const item = pickItem(curr, cid, state, { preferMcq: true, avoidId: state.lastItemId, factIds: section.factIds });
-    decide(state, now, "Question on the section just opened", ["testing effect"], "retrieve");
-    return retrieveAct(item, "encode", state);
+    decide(state, now, "Re-read this heading — no quiz until asked", [`ch.${section.chapter} ${section.title}`], "read");
+    return readAct(section, false);
   }
 
   // All introduced: cumulative mixed retrieval
@@ -230,7 +207,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
       return true;
     })
     .sort((a, b) => a.estimatedMastery - b.estimatedMastery)[0];
-  if (weak) {
+  if (weak && state.retrieveCount > 0) {
     const item = pickItem(curr, weak.conceptId, state, { preferMcq: true, avoidId: state.lastItemId });
     decide(state, now, "Curriculum exhausted for new sections — successive relearning of weakest", [weak.conceptId], "retrieve");
     return retrieveAct(item, "cumulative", state);
@@ -238,12 +215,6 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
 
   const report = buildDebrief(state, now);
   return { kind: "debrief", report, speech: debriefSpeech(report) };
-}
-
-function shouldReviewNow(state: EngineState, conceptId: string, now: number) {
-  const last = state.log.events.filter((e) => e.conceptIds?.includes(conceptId) && e.type === "graded").at(-1);
-  if (!last) return true;
-  return now - last.at > 8 * 60 * 1000 || (state.learner.concepts[conceptId]?.successiveCriterionHits ?? 0) < 2;
 }
 
 function adapt(
@@ -256,20 +227,11 @@ function adapt(
   state.queueHint = null;
 
   if (signal === "inactivity" || signal === "reread-loop" || signal === "slow-latency") {
-    const hasRead = state.log.events.some((e) => e.type === "read");
-    const cid =
-      state.lastConceptIds.find((id) => !state.preferredChapter || conceptChapter(id) === state.preferredChapter) ??
-      dueHere(state, now)[0];
-    if (cid && hasRead) {
-      const item = pickItem(curr, cid, state, { preferMcq: true, factIds: lastReadFacts(state) });
-      decide(state, now, "Attention lapse → a question on the live section", [signal], "retrieve");
-      return retrieveAct(item, "attention-switch", state);
-    }
     const stay =
       nextLesson(state) ??
       curr.sections.find((s) => s.chapter === state.preferredChapter) ??
       curr.sections[0];
-    decide(state, now, "Still on the unread lesson — do not quiz yet", [signal], "read");
+    decide(state, now, "Stay on the book — no quiz until asked", [signal], "read");
     return readAct(stay, false);
   }
   if (signal === "rapid-answer" || signal === "guessing" || signal === "rapid-click") {
@@ -326,9 +288,9 @@ function adapt(
 function describeAdapt(s: AttentionSignal): string {
   switch (s) {
     case "inactivity":
-      return "Switch from reading to an MCQ on the live section";
+      return "Stay on the book — no quiz until asked";
     case "reread-loop":
-      return "Stop restudy; ask an MCQ on the same section";
+      return "Stay on the same heading; no quiz until asked";
     case "rapid-answer":
     case "guessing":
     case "rapid-click":
@@ -708,6 +670,10 @@ function decide(state: EngineState, now: number, reason: string, evidence: strin
   state.log.events.push({ at: now, type: "decision", payload: { reason, choice } });
 }
 
+export function requestCheck(state: EngineState): EngineState {
+  return { ...state, wantCheck: true };
+}
+
 export function openChapter(state: EngineState, chapter: ChapterId): EngineState {
   return {
     ...state,
@@ -717,6 +683,7 @@ export function openChapter(state: EngineState, chapter: ChapterId): EngineState
     lastConceptIds: [],
     queueHint: null,
     pending: undefined,
+    wantCheck: false,
   };
 }
 
@@ -776,10 +743,10 @@ export function buildDebrief(state: EngineState, now = Date.now()): DebriefRepor
   const nextTitle = nextSection ? `Chapter ${nextSection.chapter} · ${nextSection.title}` : undefined;
   const weakest = uncertain[0]?.title;
   const nextFocus = nextTitle
-    ? `Read the next section: ${nextTitle}` + (weakest ? `. Then a question on ${weakest}.` : ".")
+    ? `Read the next section: ${nextTitle}.`
     : weakest
-      ? `Stay on questions for ${weakest} — no new chapter until this holds after a gap.`
-      : "Mixed questions across Chapters 1–6.";
+      ? `Questions are optional — Check this when you want one on ${weakest}.`
+      : "Keep reading Chapters 1–6. Check this only when you want a question.";
 
   return {
     understood,

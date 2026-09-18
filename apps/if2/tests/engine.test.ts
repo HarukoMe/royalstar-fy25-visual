@@ -28,6 +28,7 @@ import {
   nextActivity,
   openChapter,
   openSection,
+  requestCheck,
   signal,
   startSession,
 } from "../src/engine/session";
@@ -160,13 +161,32 @@ describe("session engine", () => {
     expect(DEFAULT_KOKORO.langCode).toBe("b");
   });
 
-  it("uses a four-option MCQ on the lesson just read", () => {
+  it("keeps reading after Next — no quiz until Check this", () => {
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    const firstId = a.kind === "read" ? a.section.id : "";
+    const ids: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      expect(a.kind).toBe("read");
+      if (a.kind !== "read") break;
+      ids.push(a.section.id);
+      s = markRead(s, a.unit);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("read");
+    expect(ids[0]).toBe(firstId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("uses a four-option MCQ on the lesson just read when asked", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
     expect(a.kind).toBe("read");
     const taught = a.kind === "read" ? a.unit.factIds : [];
     if (a.kind === "read") {
       s = markRead(s, a.unit);
+      s = requestCheck(s);
       a = nextActivity(s);
     }
     expect(a.kind).toBe("retrieve");
@@ -209,6 +229,10 @@ describe("session engine", () => {
       s = markRead(s, a.unit, now);
       a = nextActivity(s, now);
     }
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") expect(a.section.chapter).toBe(2);
+    s = requestCheck(s);
+    a = nextActivity(s, now);
     expect(a.kind).toBe("retrieve");
     if (a.kind === "retrieve") {
       const cid = a.item.conceptIds[0]!;
@@ -255,26 +279,23 @@ describe("session engine", () => {
     if (a.kind === "read") expect(a.section.id).toBe(target!.id);
   });
 
-  it("switches to retrieval on inactivity rather than idling on reading", () => {
+  it("does not switch to a quiz on inactivity while reading", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
     expect(a.kind).toBe("read");
     if (a.kind === "read") s = markRead(s, a.unit);
     s = signal(s, "inactivity");
     a = nextActivity(s);
-    expect(a.kind).toBe("retrieve");
-    if (a.kind === "retrieve") {
-      expect(a.item.type).toBe("mcq");
-      expect(a.item.options).toHaveLength(4);
-    }
+    expect(a.kind).toBe("read");
   });
 
-  it("retrieves the unit just read instead of skipping ahead", () => {
+  it("retrieves the unit just read when Check this is asked", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
     expect(a.kind).toBe("read");
     if (a.kind === "read") {
       s = markRead(s, a.unit);
+      s = requestCheck(s);
       a = nextActivity(s);
       expect(a.kind).toBe("retrieve");
       if (a.kind === "retrieve") expect(a.mode).toBe("encode");
@@ -290,6 +311,7 @@ describe("session engine", () => {
     if (a.kind === "read") {
       expect(a.unit.factIds).toEqual(first.factIds);
       s = markRead(s, a.unit);
+      s = requestCheck(s);
       a = nextActivity(s);
     }
     expect(a.kind).toBe("retrieve");
@@ -363,6 +385,7 @@ describe("session close", () => {
     let a = nextActivity(s);
     if (a.kind === "read") {
       s = markRead(s, a.unit);
+      s = requestCheck(s);
       a = nextActivity(s);
     }
     if (a.kind === "retrieve") {
@@ -384,6 +407,7 @@ describe("breadth across sessions", () => {
     const firstFact = a.kind === "read" ? a.unit.factIds[0] : "";
     if (a.kind === "read") {
       s = markRead(s, a.unit);
+      s = requestCheck(s);
       a = nextActivity(s);
     }
     expect(a.kind).toBe("retrieve");

@@ -150,6 +150,12 @@ textarea {
 }
 
 .row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+button.quiet-check {
+  border: 0;
+  color: var(--muted);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+}
 .confidence { display: flex; gap: 0.35rem; }
 .confidence button { padding: 0.45rem 0.7rem; border-radius: 0.4rem; background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .confidence button[data-on="1"] { background: var(--ink); color: var(--paper); }

@@ -16,6 +16,7 @@ import {
   nextActivity,
   openChapter,
   signal,
+  requestCheck,
   type EngineState,
 } from "../engine/session";
 import { createBrowserAudio, type ListenState } from "../engine/audio";
@@ -114,9 +115,10 @@ export function Focus({
     }
   }
 
-  function continueAfterRead(unitRead = true) {
+  function continueAfterRead(check: boolean) {
     let e = engine;
-    if (activity.kind === "read" && unitRead) e = markRead(e, activity.unit);
+    if (activity.kind === "read") e = markRead(e, activity.unit);
+    if (check) e = requestCheck(e);
     saveLearner(e.learner);
     setEngine(e);
     jump(e);
@@ -234,7 +236,10 @@ export function Focus({
               onStop={stopSection}
             />
             <div className="row">
-              <button type="button" onClick={() => continueAfterRead(true)}>
+              <button type="button" onClick={() => continueAfterRead(false)}>
+                Next
+              </button>
+              <button type="button" className="ghost quiet-check" onClick={() => continueAfterRead(true)}>
                 Check this
               </button>
             </div>
