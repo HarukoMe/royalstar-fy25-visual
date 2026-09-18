@@ -7,8 +7,8 @@
   --ok: #3f6212;
   --warn: #92400e;
   --focus: #f7f1e6;
-  --type: "Source Sans 3", system-ui, sans-serif;
-  --display: "Fraunces", Georgia, serif;
+  --type: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
 }
 
 * { box-sizing: border-box; }

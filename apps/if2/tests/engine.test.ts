@@ -254,3 +254,32 @@ describe("mcq shuffle", () => {
     expect(sh.options[sh.correctIndex]).toBe("A right");
   });
 });
+
+describe("progress backup", () => {
+  it("round-trips a learner through export/import", async () => {
+    const mem = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        mem.set(k, v);
+      },
+      removeItem: (k: string) => {
+        mem.delete(k);
+      },
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const storage = await import("../src/storage");
+    const model = createLearner();
+    model.sessionCount = 3;
+    storage.saveLearner(model);
+    const bundle = storage.exportProgress();
+    storage.resetLearner();
+    expect(storage.loadLearner().sessionCount).toBe(0);
+    const r = storage.importProgress(bundle);
+    expect(r.ok).toBe(true);
+    expect(storage.loadLearner().sessionCount).toBe(3);
+  });
+});

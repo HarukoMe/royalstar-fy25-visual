@@ -64,6 +64,7 @@ export function App() {
             resetLearner();
             setLearner(loadLearner());
           }}
+          onImported={() => setLearner(loadLearner())}
         />
       )}
       {mode === "exam" && (

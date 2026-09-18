@@ -5,7 +5,7 @@ import { emptyState, examReadinessFor, recomputeMastery } from "../engine/learne
 import { dueConceptIds, scheduleWhy } from "../engine/scheduler";
 import { chapterReadiness } from "../engine/exam";
 import type { LearnerModel } from "../engine/types";
-import { loadSessions } from "../storage";
+import { loadSessions, downloadProgress, importProgress } from "../storage";
 
 type View =
   | "map"
@@ -23,11 +23,13 @@ export function Atlas({
   onStart,
   onReset,
   onExam,
+  onImported,
 }: {
   learner: LearnerModel;
   onStart: () => void;
   onReset: () => void;
   onExam: () => void;
+  onImported?: () => void;
 }) {
   const curr = loadCurriculum();
   const now = Date.now();
@@ -52,6 +54,37 @@ export function Atlas({
         <button className="ghost" onClick={onExam}>
           Exam practice
         </button>
+        <button className="ghost" onClick={() => downloadProgress()}>
+          Export progress
+        </button>
+        <label className="ghost" style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", padding: "0.85rem 1.2rem", borderRadius: 999, border: "1px solid var(--line)" }}>
+          Import progress
+          <input
+            type="file"
+            accept="application/json,.json"
+            style={{ display: "none" }}
+            onChange={(ev) => {
+              const file = ev.target.files?.[0];
+              ev.target.value = "";
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const parsed = JSON.parse(String(reader.result));
+                  const r = importProgress(parsed);
+                  if (!r.ok) {
+                    window.alert(r.error);
+                    return;
+                  }
+                  onImported?.();
+                } catch {
+                  window.alert("Could not read that file.");
+                }
+              };
+              reader.readAsText(file);
+            }}
+          />
+        </label>
         <button className="ghost" onClick={onReset}>
           Reset learner
         </button>
@@ -60,6 +93,7 @@ export function Atlas({
         Encountered {exposed} of {curr.stats.concepts}. Still open in the journey: {audit.unfinishedCount}.
         Heuristic exam overlay 1.1: {Math.round(exam * 100)}. Due now: {due.length}. Sessions: {learner.sessionCount}.
         Rough study depth: {audit.journeyHoursEstimate}+ focused hours if you actually retrieve after delays.
+        Progress stays in this browser — export a backup if you will study on another computer.
       </p>
       <nav className="view-nav">
         {(
