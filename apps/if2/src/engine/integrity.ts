@@ -37,6 +37,10 @@ export function runIntegrity(): IntegrityReport {
   }
   if (curr.stats.mcq < 120) problems.push(`MCQ pool too small: ${curr.stats.mcq}`);
   if (curr.stats.concepts < 70) problems.push(`Concept map too small: ${curr.stats.concepts}`);
+  if ((curr.stats.sections ?? 0) < 80) problems.push(`Book sections too few: ${curr.stats.sections}`);
+  const sectionFacts = new Set(curr.sections.flatMap((s) => s.factIds));
+  const unplaced = curr.facts.filter((f) => !sectionFacts.has(f.id));
+  if (unplaced.length) problems.push(`Some facts are missing from book sections: ${unplaced.map((f) => f.id).join(", ")}`);
   if (curr.stats.factsByChapter[2] < 18) problems.push(`Chapter 2 still too thin: ${curr.stats.factsByChapter[2]} facts`);
   if (curr.stats.factsByChapter[4] < 16) problems.push(`Chapter 4 still too thin: ${curr.stats.factsByChapter[4]} facts`);
   if (curr.stats.factsByChapter[5] < 14) problems.push(`Chapter 5 still too thin: ${curr.stats.factsByChapter[5]} facts`);

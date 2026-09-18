@@ -7,8 +7,11 @@
   --ok: #3f6212;
   --warn: #92400e;
   --focus: #f7f1e6;
+  --spine: #8c2f28;
+  --desk: #141210;
   --type: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -73,11 +76,79 @@ button:disabled { opacity: 0.4; cursor: default; }
 }
 h2 { font-family: var(--display); font-weight: 600; font-size: 2rem; line-height: 1.15; margin: 0 0 1rem; }
 .lede { font-size: 1.12rem; line-height: 1.55; margin: 0 0 1.2rem; }
+.hold {
+  font-family: var(--display);
+  font-weight: 600;
+  font-style: italic;
+  font-size: 1.7rem;
+  line-height: 1.3;
+  margin: 0 0 1.1rem;
+  color: #3b2a22;
+}
+.kernel {
+  font-size: 1.12rem;
+  line-height: 1.65;
+  margin: 0 0 1.2rem;
+}
+.quiet-stage { align-items: flex-start; }
+.quiet-card { width: min(44rem, 100%); }
 .meta { color: var(--muted); font-size: 0.92rem; margin-top: 1.4rem; }
 .source { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; }
 
-.reading p { font-size: 1.12rem; line-height: 1.65; margin: 0 0 1rem; }
+.reading p { font-size: 1.12rem; line-height: 1.7; margin: 0 0 1rem; }
 .reading h3 { font-family: var(--display); font-size: 1.15rem; margin: 1.4rem 0 0.4rem; }
+.reading section { margin-bottom: 0.35rem; }
+.reading ul {
+  margin: 0 0 1.1rem;
+  padding-left: 1.2rem;
+  font-size: 1.12rem;
+  line-height: 1.65;
+}
+.reading li { margin: 0 0 0.35rem; }
+.lesson-table { font-size: 0.92rem; margin: 0.4rem 0 1.2rem; }
+.lesson-table caption {
+  text-align: left;
+  font-family: var(--display);
+  font-size: 1rem;
+  margin-bottom: 0.45rem;
+  color: var(--muted);
+}
+.mixup {
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: #3b2a22;
+  border-left: 3px solid var(--accent);
+  padding: 0.15rem 0 0.15rem 0.85rem;
+  margin: 0.4rem 0 1.1rem;
+}
+
+.chapter-pills { display: flex; gap: 0.35rem; margin: 0 0 1rem; }
+.chapter-pills button { padding: 0.25rem 0.7rem; font-size: 0.85rem; min-width: 2.1rem; }
+.chapter-pills button.ghost { border-radius: 999px; }
+
+.listen-wrap { margin: 1.1rem 0 0.2rem; }
+.listen-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.listen-bar button { padding: 0.55rem 1rem; }
+.kokoro-settings {
+  margin-top: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.kokoro-settings label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.88rem; color: var(--muted); }
+.kokoro-settings input, .kokoro-settings select {
+  border: 1px solid var(--line);
+  background: #fffaf1;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.4rem;
+}
+
+.own-words { display: flex; align-items: center; gap: 0.4rem; }
+.own-words label { cursor: pointer; user-select: none; }
+.own-words input { accent-color: var(--ink); }
 
 .table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 1rem 0 1.4rem; }
 .table th, .table td { border-bottom: 1px solid var(--line); text-align: left; padding: 0.45rem 0.4rem; vertical-align: top; }
@@ -102,6 +173,12 @@ textarea {
 }
 
 .row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+button.quiet-check {
+  border: 0;
+  color: var(--muted);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+}
 .confidence { display: flex; gap: 0.35rem; }
 .confidence button { padding: 0.45rem 0.7rem; border-radius: 0.4rem; background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .confidence button[data-on="1"] { background: var(--ink); color: var(--paper); }
@@ -149,9 +226,10 @@ textarea {
 .mcq-feedback { margin-top: 1rem; }
 .mcq-feedback details { margin-top: 0.6rem; color: var(--muted); }
 .exam-stage .card { background: #f3eee4; }
+
 @media (max-width: 640px) {
   .card { padding: 1.4rem 1rem 1.2rem; }
-  h2 { font-size: 1.45rem; }
+  h2, .hold { font-size: 1.45rem; }
   .topbar { padding: 0.8rem 1rem; flex-wrap: wrap; gap: 0.4rem; }
   .atlas { padding: 0 1rem 2rem; }
   .stage { padding: 0.6rem 0.7rem 1.6rem; }

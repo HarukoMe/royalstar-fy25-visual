@@ -61,9 +61,9 @@ export function Debrief({ report, onAtlas, onAgain }: { report: DebriefReport; o
           <p className="lede">{report.nextFocus}</p>
         </section>
         <div className="row">
-          <button onClick={onAgain}>Start the next session now</button>
+          <button onClick={onAgain}>Continue reading</button>
           <button className="ghost" onClick={onAtlas}>
-            Knowledge model
+            Progress map
           </button>
         </div>
       </article>

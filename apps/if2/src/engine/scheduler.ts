@@ -1,6 +1,6 @@
 import { loadCurriculum } from "../curriculum/compile";
 import { emptyState, recomputeMastery } from "./learner";
-import type { ConceptState, LearnerModel } from "./types";
+import type { BookSection, ChapterId, ConceptState, LearnerModel } from "./types";
 
 const DAY = 86_400_000;
 
@@ -71,19 +71,36 @@ export function dueConceptIds(model: LearnerModel, now: number): string[] {
 }
 
 export function nextNewUnitId(model: LearnerModel): string | null {
-  const { units, concepts } = loadCurriculum();
-  const conceptById = Object.fromEntries(concepts.map((c) => [c.id, c]));
-  const seen = (id: string) => (model.concepts[id]?.exposures ?? 0) > 0;
-  const masteredEnough = (id: string) => (model.concepts[id]?.estimatedMastery ?? 0) >= 0.25 || (model.concepts[id]?.exposures ?? 0) >= 1;
+  return nextNewSection(model)?.id ?? null;
+}
 
-  for (const ch of [1, 2, 3, 4, 5, 6] as const) {
-    const inCh = units.filter((u) => u.chapter === ch);
-    for (const u of inCh) {
-      const cid = u.conceptIds[0];
-      if (seen(cid)) continue;
-      const prereqOk = (conceptById[cid]?.prerequisites ?? []).every(masteredEnough);
-      if (prereqOk) return u.id;
+export function nextNewSection(model: LearnerModel, chapter?: ChapterId): BookSection | null {
+  const { sections, concepts, factById } = loadCurriculum();
+  const conceptById = Object.fromEntries(concepts.map((c) => [c.id, c]));
+  const seenFact = (id: string) => (model.seenFacts?.[id] ?? 0) > 0;
+  const masteredEnough = (id: string) =>
+    (model.concepts[id]?.estimatedMastery ?? 0) >= 0.25 || (model.concepts[id]?.exposures ?? 0) >= 1;
+
+  const pickFrom = (ch: ChapterId, ignorePrereq: boolean): BookSection | null => {
+    for (const s of sections.filter((sec) => sec.chapter === ch)) {
+      const unseenFacts = s.factIds.filter((id) => !seenFact(id));
+      if (!unseenFacts.length) continue;
+      if (ignorePrereq) return s;
+      const prereqOk = unseenFacts.every((fid) => {
+        const cid = factById[fid]?.conceptId;
+        return (conceptById[cid ?? ""]?.prerequisites ?? []).every(masteredEnough);
+      });
+      if (prereqOk) return s;
     }
+    return null;
+  };
+
+  if (chapter) {
+    return pickFrom(chapter, true);
+  }
+  for (const ch of [1, 2, 3, 4, 5, 6] as const) {
+    const found = pickFrom(ch, false);
+    if (found) return found;
   }
   return null;
 }

@@ -11,7 +11,27 @@ import {
 } from "../src/engine/learner";
 import { noteAnswer, emptyAttention } from "../src/engine/attention";
 import { scheduleAfterRetrieval } from "../src/engine/scheduler";
-import { beginGrade, commitGrade, endSession, grade, markRead, nextActivity, signal, startSession } from "../src/engine/session";
+import {
+  applyKokoroFromSearch,
+  chunkForKokoro,
+  DEFAULT_KOKORO,
+  normalizeBaseUrl,
+  parseVoiceIds,
+  speechTexts,
+} from "../src/engine/kokoro";
+import {
+  beginGrade,
+  commitGrade,
+  endSession,
+  grade,
+  markRead,
+  nextActivity,
+  openChapter,
+  openSection,
+  requestCheck,
+  signal,
+  startSession,
+} from "../src/engine/session";
 import { tutorExplain } from "../src/engine/tutor";
 import { finishExam, startExam } from "../src/engine/exam";
 import { shuffleMcq } from "../src/engine/shuffle";
@@ -22,7 +42,7 @@ describe("curriculum integrity", () => {
     expect(report.problems).toEqual([]);
     const { stats, concepts, items } = loadCurriculum();
     expect(stats.factsByChapter[1]).toBeGreaterThan(10);
-    expect(stats.factsByChapter[6]).toBeGreaterThan(8);
+    expect(stats.factsByChapter[6]).toBeGreaterThan(20);
     expect(concepts.every((c) => c.chapter >= 1 && c.chapter <= 6)).toBe(true);
     expect(stats.mcq).toBeGreaterThan(120);
     expect(stats.concepts).toBeGreaterThan(70);
@@ -104,41 +124,216 @@ describe("mastery vs accessibility", () => {
 });
 
 describe("session engine", () => {
-  it("starts with prediction or reading, not a quiz dump", () => {
+  it("starts with the book lesson, not a quiz on unread material", () => {
     const s = startSession(createLearner(), Date.now());
     const a = nextActivity(s, Date.now());
-    expect(["predict", "read"].includes(a.kind)).toBe(true);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.section.chapter).toBe(1);
+      expect(a.section.title).toMatch(/Private motor/i);
+      expect(a.kernel.hold!.length).toBeGreaterThan(20);
+      expect(a.unit.reading.length).toBeGreaterThan(1);
+      const lesson = a.unit.reading.map((r) => [r.body, ...(r.bullets ?? [])].join(" ")).join(" ");
+      expect(lesson).toMatch(/illegal to drive/i);
+      expect(lesson).toMatch(/SORN|Statutory Off Road/i);
+      expect(lesson.length).toBeGreaterThan(400);
+      expect(a.speech.some((x) => /This unit is/.test(x.text))).toBe(false);
+      const claim = loadCurriculum().facts[0]!.claim.replace(/\[\[|\]\]/g, "");
+      expect(a.speech.some((x) => x.text.includes(claim.slice(0, 40)))).toBe(true);
+      expect(a.speech.some((x) => x.text.includes(a.kernel.hold!))).toBe(true);
+      const joined = a.speech.map((x) => x.text).join(" ");
+      expect(joined.length).toBeGreaterThan(400);
+      expect(joined).not.toMatch(/Comparison\.|Exam trap/);
+    }
   });
 
-  it("switches to retrieval on inactivity rather than idling on reading", () => {
+  it("compiles every fact into a chapter/section and keeps MCQ breadth", () => {
+    const { sections, facts, stats } = loadCurriculum();
+    expect(sections.length).toBeGreaterThan(80);
+    expect(facts.every((f) => sections.some((s) => s.factIds.includes(f.id)))).toBe(true);
+    expect(sections.flatMap((s) => s.factIds).length).toBe(facts.length);
+    expect(stats.sections).toBe(sections.length);
+    expect(sections.every((s) => s.chapter >= 1 && s.chapter <= 6)).toBe(true);
+    expect(sections.filter((s) => s.chapter === 6).length).toBeGreaterThan(8);
+    expect(sections.some((s) => s.reading.some((r) => r.hold && r.hold.length > 20))).toBe(true);
+    expect(sections.filter((s) => s.chapter === 6).some((s) => s.comparisonTable)).toBe(true);
+    const rta = sections.find((s) => s.chapter === 1 && /Road Traffic Act only/i.test(s.title));
+    expect(rta).toBeTruthy();
+    const rtaText = rta!.reading.map((r) => [r.body, ...(r.bullets ?? [])].join(" ")).join(" ");
+    expect(rtaText).toMatch(/£1\.2 million/);
+    expect(rtaText).toMatch(/unlimited/i);
+    expect(rtaText).toMatch(/emergency medical|Third EU Motor/i);
+    expect(rta!.reading.some((r) => (r.bullets?.length ?? 0) >= 3)).toBe(true);
+    expect(rtaText.length).toBeGreaterThan(500);
+    expect(facts.some((f) => f.id === "l-el-min-limit" && f.claim.includes("£5 million"))).toBe(true);
+    expect(DEFAULT_KOKORO.voice).toContain("af_heart");
+    expect(DEFAULT_KOKORO.langCode).toBe("b");
+  });
+
+  it("keeps reading after Next — no quiz until Check this", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "compulsory third party on public roads", 4000, false);
-      s = commitGrade(s, 3);
+    expect(a.kind).toBe("read");
+    const firstId = a.kind === "read" ? a.section.id : "";
+    const ids: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      expect(a.kind).toBe("read");
+      if (a.kind !== "read") break;
+      ids.push(a.section.id);
+      s = markRead(s, a.unit);
       a = nextActivity(s);
     }
+    expect(a.kind).toBe("read");
+    expect(ids[0]).toBe(firstId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("uses a four-option MCQ on the lesson just read when asked", () => {
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    const taught = a.kind === "read" ? a.unit.factIds : [];
+    if (a.kind === "read") {
+      s = markRead(s, a.unit);
+      s = requestCheck(s);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      expect(a.item.type).toBe("mcq");
+      expect(a.item.options).toHaveLength(4);
+      expect(a.speech[0]?.text).toBe(a.item.prompt);
+      expect(a.item.factIds.some((id) => taught.includes(id))).toBe(true);
+    }
+  });
+
+  it("can open a later chapter without typing a prediction first", () => {
+    const s = startSession(createLearner(), Date.now(), { chapter: 4 });
+    const a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") expect(a.section.chapter).toBe(4);
+  });
+
+  it("stays in chapter 2 after an answer even when chapter 1 is due", () => {
+    const now = Date.now();
+    let learner = createLearner();
+    const ch1 = loadCurriculum().concepts.filter((c) => c.chapter === 1).slice(0, 8);
+    for (const c of ch1) {
+      learner.concepts[c.id] = {
+        ...emptyState(c.id),
+        exposures: 2,
+        successfulRetrievals: 1,
+        nextDueAt: now - 60_000,
+        lastSeenAt: now - 86_400_000,
+        lastSuccessAt: now - 86_400_000,
+        estimatedMastery: 0.25,
+      };
+    }
+    let s = startSession(learner, now);
+    s = openChapter(s, 2);
+    let a = nextActivity(s, now);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.section.chapter).toBe(2);
+      s = markRead(s, a.unit, now);
+      a = nextActivity(s, now);
+    }
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") expect(a.section.chapter).toBe(2);
+    s = requestCheck(s);
+    a = nextActivity(s, now);
+    expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      const cid = a.item.conceptIds[0]!;
+      expect(loadCurriculum().concepts.find((c) => c.id === cid)?.chapter).toBe(2);
+      const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "";
+      s = beginGrade(s, a.item, ans, 8000, false, now);
+      s = commitGrade(s, 4, now);
+      a = nextActivity(s, now + 1000);
+    }
+    if (a.kind === "read") expect(a.section.chapter).toBe(2);
+    if (a.kind === "retrieve") {
+      const cid = a.item.conceptIds[0]!;
+      expect(loadCurriculum().concepts.find((c) => c.id === cid)?.chapter).toBe(2);
+    }
+  });
+
+  it("opens chapter 6 on a who-was-hurt hold, not a table dump", () => {
+    const s = startSession(createLearner(), Date.now(), { chapter: 6 });
+    const a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.section.chapter).toBe(6);
+      expect(a.section.chapterTitle).toMatch(/Liability/i);
+      expect(a.section.comparisonTable?.rows.length).toBeGreaterThan(3);
+      expect(a.section.lede).toMatch(/who was hurt/i);
+      expect(a.kernel.hold).toMatch(/who was hurt/i);
+      const lesson = a.unit.reading.map((r) => [r.body, ...(r.bullets ?? [])].join(" ")).join(" ");
+      expect(lesson).toMatch(/employers/i);
+      expect(lesson.length).toBeGreaterThan(300);
+      expect(a.unit.reading.length).toBeGreaterThan(0);
+      const joined = a.speech.map((x) => x.text).join(" ");
+      expect(joined).toMatch(/who was hurt|employers/i);
+      expect(joined).not.toMatch(/Comparison\.|Exam trap/);
+    }
+  });
+
+  it("jumps to a named section from the chapter TOC", () => {
+    const curr = loadCurriculum();
+    const target = curr.sections.find((s) => s.chapter === 6 && /extended/i.test(s.title));
+    expect(target).toBeTruthy();
+    let s = startSession(createLearner());
+    s = openSection(s, target!.id);
+    const a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") expect(a.section.id).toBe(target!.id);
+  });
+
+  it("does not switch to a quiz on inactivity while reading", () => {
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
     expect(a.kind).toBe("read");
     if (a.kind === "read") s = markRead(s, a.unit);
     s = signal(s, "inactivity");
     a = nextActivity(s);
-    expect(a.kind).toBe("retrieve");
+    expect(a.kind).toBe("read");
   });
 
-  it("retrieves the unit just read instead of skipping ahead", () => {
+  it("retrieves the unit just read when Check this is asked", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "illegal to drive on a public road without liability cover", 5000, false);
-      s = commitGrade(s, 3);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      s = markRead(s, a.unit);
+      s = requestCheck(s);
+      a = nextActivity(s);
+      expect(a.kind).toBe("retrieve");
+      if (a.kind === "retrieve") expect(a.mode).toBe("encode");
+    }
+  });
+
+  it("moves to the next book heading after a lesson and its check", () => {
+    const first = loadCurriculum().sections[0]!;
+    expect(first.factIds.length).toBeGreaterThan(1);
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.unit.factIds).toEqual(first.factIds);
+      s = markRead(s, a.unit);
+      s = requestCheck(s);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "";
+      s = beginGrade(s, a.item, ans, 8000, false);
+      s = commitGrade(s, 4);
       a = nextActivity(s);
     }
     expect(a.kind).toBe("read");
     if (a.kind === "read") {
-      s = markRead(s, a.unit);
-      a = nextActivity(s);
-      expect(a.kind).toBe("retrieve");
-      if (a.kind === "retrieve") expect(a.mode).toBe("encode");
+      expect(a.section.id).not.toBe(first.id);
     }
   });
 
@@ -198,9 +393,12 @@ describe("session close", () => {
   it("commits a pending answer and stamps endedAt", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "compulsory third party on public roads", 4000, false);
-    } else if (a.kind === "retrieve") {
+    if (a.kind === "read") {
+      s = markRead(s, a.unit);
+      s = requestCheck(s);
+      a = nextActivity(s);
+    }
+    if (a.kind === "retrieve") {
       const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "x";
       s = beginGrade(s, a.item, ans, 4000, false);
     }
@@ -215,15 +413,11 @@ describe("breadth across sessions", () => {
   it("does not retire a concept after one MCQ, and later items can open a different unit", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
-    if (a.kind === "predict") {
-      s = beginGrade(s, a.item, "illegal to drive without third party cover", 5000, false);
-      s = commitGrade(s, 3);
-      a = nextActivity(s);
-    }
     expect(a.kind).toBe("read");
-    const firstUnit = a.kind === "read" ? a.unit.id : "";
+    const firstFact = a.kind === "read" ? a.unit.factIds[0] : "";
     if (a.kind === "read") {
       s = markRead(s, a.unit);
+      s = requestCheck(s);
       a = nextActivity(s);
     }
     expect(a.kind).toBe("retrieve");
@@ -243,7 +437,7 @@ describe("breadth across sessions", () => {
       s = commitGrade(s, 3);
       a = nextActivity(s);
     }
-    if (a.kind === "read") expect(a.unit.id).not.toBe(firstUnit);
+    if (a.kind === "read") expect(a.unit.factIds[0]).not.toBe(firstFact);
   });
 });
 
@@ -281,5 +475,38 @@ describe("progress backup", () => {
     const r = storage.importProgress(bundle);
     expect(r.ok).toBe(true);
     expect(storage.loadLearner().sessionCount).toBe(3);
+  });
+});
+
+describe("kokoro speech", () => {
+  it("chunks section prose without inventing words", () => {
+    expect(normalizeBaseUrl("http://127.0.0.1:8880/")).toBe("http://127.0.0.1:8880");
+    const texts = speechTexts([
+      { kind: "narrate", text: "Chapter 1. Motor insurance.", interruptible: true },
+      { kind: "wait", text: "", interruptible: true },
+      { kind: "narrate", text: "It is illegal to drive on a public road without cover.", interruptible: true },
+    ]);
+    expect(texts.join(" ")).toContain("illegal to drive");
+    expect(texts.join(" ")).not.toMatch(/This unit is/);
+    const chunks = chunkForKokoro(["aaa", "bbb", "ccc"], 10);
+    expect(chunks.join("|")).toBe("aaa\n\nbbb|ccc");
+    expect(parseVoiceIds({ voices: [{ id: "bf_emma" }, { id: "af_bella" }] })).toEqual(["bf_emma", "af_bella"]);
+  });
+
+  it("reads a work-PC ?kokoro= tunnel from the query string", () => {
+    const mem = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => mem.set(k, v),
+      removeItem: (k: string) => mem.delete(k),
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const next = applyKokoroFromSearch("?kokoro=https://demo.trycloudflare.com&voice=bf_isabella");
+    expect(next.baseUrl).toBe("https://demo.trycloudflare.com");
+    expect(next.voice).toBe("bf_isabella");
+    expect(next.langCode).toBe("b");
   });
 });

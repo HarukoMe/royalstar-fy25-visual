@@ -4,7 +4,7 @@ This repository holds three separate apps. They do not share a runtime, types, o
 
 | App | Path | What it is |
 | --- | --- | --- |
-| **IF2 Conduct** | `apps/if2` | Evidence-informed study conductor for CII IF2 2026, Chapters 1–6 (syllabus 1.1) |
+| **IF2 Conduct** | `apps/if2` | CII IF2 2026 Chapters 1–6 (syllabus 1.1): read a section, hear it, then MCQs |
 | **Soundings** | `apps/soundings` | Private personal financial control room |
 | **Plate Room** | `apps/plate-room` | Cinematic FY2025 reading of RoyalStar Assurance’s audited statements |
 
@@ -29,9 +29,21 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Use **Focus** to study. The atlas outside the session shows gaps, mix-ups, due retrievals and a separate exam-readiness overlay — not a single percentage of “done”.
+Open the printed URL (or the GitHub Pages study URL). **Study** is the book first: one Key Facts heading at a time (the full sourced lesson — Key Facts 1–6, plus the chapter 1 study text where we have it), **Next** to keep reading, **Listen** if you want it spoken. **Check this** is optional — a question on that lesson when you are ready. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the card.
 
-Course content is taken from the supplied IF2 syllabus, examination guide, 2026 key facts (chs 1–6) and the chapter 1 study-text extract. Pedagogy is in `apps/if2/docs/learning-science.md`.
+If GitHub Pages is HTTPS and Kokoro is HTTP, the browser may block it. Leave Docker running on the home PC, then expose HTTPS and paste that URL under **Voice**:
+
+```bash
+docker run --rm cloudflare/cloudflared:latest tunnel --url http://host.docker.internal:8880
+```
+
+Copy the `https://….trycloudflare.com` URL into Study → Voice → Kokoro URL, or bookmark:
+
+`https://harukome.github.io/royalstar-fy25-visual/?kokoro=https://YOUR-TUNNEL.trycloudflare.com`
+
+Work browser, no install. The `?kokoro=` address is stored. Chapters 1–6 are the same study.
+
+The **Map** is optional: coverage, mix-ups, and Export/Import if you switch machines. Course content is taken from the supplied IF2 syllabus, examination guide, 2026 key facts (chs 1–6) and the chapter 1 study-text extract. Pedagogy is in `apps/if2/docs/learning-science.md`.
 
 CII materials remain copyright of the Chartered Insurance Institute and are used here only to drive personal study software.
 

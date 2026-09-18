@@ -26,7 +26,7 @@ export function Atlas({
   onImported,
 }: {
   learner: LearnerModel;
-  onStart: () => void;
+  onStart: (chapter?: 1 | 2 | 3 | 4 | 5 | 6) => void;
   onReset: () => void;
   onExam: () => void;
   onImported?: () => void;
@@ -42,15 +42,15 @@ export function Atlas({
 
   return (
     <div className="atlas">
-      <p className="kicker">Outside the session · a large world, one task at a time when you enter Focus</p>
-      <h2>Chapters 1–6 are a territory, not a checklist.</h2>
+      <p className="kicker">Progress map · not the study page</p>
+      <h2>Chapters 1–6 of IF2 (syllabus 1.1 products).</h2>
       <p className="lede">
-        {curr.stats.concepts} concepts · {curr.stats.facts} sourced claims · {curr.stats.mcq} multiple-choice
-        items ({curr.stats.examStyleMcq} exam-shaped). Syllabus 1.1 is about 36 of 100 IF2 questions.
-        A single correct tap does not retire a concept.
+        {curr.stats.concepts} concepts · {curr.stats.facts} sourced claims · {curr.stats.sections} sections ·{" "}
+        {curr.stats.mcq} multiple-choice items ({curr.stats.examStyleMcq} exam-shaped). Study is read the book with
+        Next. Check this when you want a question on that lesson. This map is for gaps, mix-ups and a backup if you switch computers.
       </p>
       <div className="row">
-        <button onClick={onStart}>{exposed ? "Resume focus session" : "Begin a focus session"}</button>
+        <button onClick={() => onStart()}>{exposed ? "Continue reading" : "Start reading"}</button>
         <button className="ghost" onClick={onExam}>
           Exam practice
         </button>
@@ -126,6 +126,9 @@ export function Atlas({
                     {" "}
                     · {curr.stats.conceptsByChapter[ch]} concepts · {curr.stats.factsByChapter[ch]} claims
                   </span>
+                  <button className="ghost" style={{ marginLeft: "0.6rem", padding: "0.2rem 0.7rem" }} onClick={() => onStart(ch)}>
+                    Read
+                  </button>
                 </h3>
                 {audit.rows
                   .filter((r) => r.chapter === ch)
@@ -326,4 +329,3 @@ export function Atlas({
 
 void coverageLabel;
 void coverageOf;
-void dueConceptIds;

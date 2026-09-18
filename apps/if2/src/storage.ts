@@ -1,5 +1,6 @@
 import type { LearnerModel, SessionLog } from "./engine/types";
 import { createLearner, hydrateLearner } from "./engine/learner";
+import { loadKokoroSettings, saveKokoroSettings, type KokoroSettings } from "./engine/kokoro";
 
 const LKEY = "if2-conduct-learner-v2";
 const LKEY_OLD = "if2-conduct-learner-v1";
@@ -44,6 +45,7 @@ export type ProgressBundle = {
   exportedAt: number;
   learner: LearnerModel;
   sessions: SessionLog[];
+  kokoro?: KokoroSettings;
 };
 
 export function exportProgress(): ProgressBundle {
@@ -52,6 +54,7 @@ export function exportProgress(): ProgressBundle {
     exportedAt: Date.now(),
     learner: loadLearner(),
     sessions: loadSessions(),
+    kokoro: loadKokoroSettings(),
   };
 }
 
@@ -62,6 +65,7 @@ export function importProgress(raw: unknown): { ok: true } | { ok: false; error:
     saveLearner(hydrateLearner(data.learner));
     const sessions = Array.isArray(data.sessions) ? data.sessions : [];
     localStorage.setItem(SKEY, JSON.stringify(sessions.slice(-40)));
+    if (data.kokoro?.baseUrl) saveKokoroSettings(data.kokoro);
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not read that file." };

@@ -6,7 +6,6 @@ import {
   noteAnswer,
   noteClicks,
   noteIdle,
-  noteReread,
 } from "../engine/attention";
 import type { FocusActivity } from "../engine/session";
 import {
@@ -15,14 +14,17 @@ import {
   endSession,
   markRead,
   nextActivity,
+  openChapter,
   signal,
+  requestCheck,
   type EngineState,
 } from "../engine/session";
-import { tutorExplain, tutorOnItem } from "../engine/tutor";
-import { createBrowserAudio } from "../engine/audio";
+import { createBrowserAudio, type ListenState } from "../engine/audio";
 import { saveLearner, saveSession } from "../storage";
-import type { PracticeItem } from "../engine/types";
+import type { BookSection, ChapterId, PracticeItem } from "../engine/types";
+import { CHAPTER_META } from "../curriculum/facts";
 import { McqCard } from "./McqCard";
+import { ListenBar } from "./ListenBar";
 
 export function Focus({
   engine,
@@ -35,26 +37,27 @@ export function Focus({
 }) {
   const [activity, setActivity] = useState<FocusActivity>(() => nextActivity(engine));
   const [draft, setDraft] = useState("");
-  const [choice, setChoice] = useState<number | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [tutor, setTutor] = useState<string | null>(null);
-  const [sources, setSources] = useState<string[]>([]);
-  const [audioOn, setAudioOn] = useState(false);
+  const [listen, setListen] = useState<ListenState>("idle");
+  const [listenError, setListenError] = useState<string | null>(null);
   const started = useRef(Date.now());
   const lastInput = useRef(Date.now());
   const att = useRef<AttentionSnapshot>(emptyAttention());
   const clicks = useRef<number[]>([]);
   const engineRef = useRef(engine);
   const activityRef = useRef(activity);
+  const listenRef = useRef(listen);
   engineRef.current = engine;
   activityRef.current = activity;
+  listenRef.current = listen;
   const audio = useMemo(() => createBrowserAudio(), []);
 
   useEffect(() => {
-    if (audioOn) audio.speak(activity.speech);
-    else audio.stop();
-  }, [activity, audioOn, audio]);
+    audio.stop();
+    setListen("idle");
+    return () => audio.stop();
+  }, [activity, audio]);
 
   useEffect(() => {
     const mark = () => {
@@ -66,7 +69,9 @@ export function Focus({
     const id = window.setInterval(() => {
       const idle = Date.now() - lastInput.current;
       const { signals } = noteIdle(att.current, idle);
-      if (signals.includes("inactivity") && activityRef.current.kind === "read") {
+      const listening =
+        listenRef.current === "speaking" || listenRef.current === "loading" || listenRef.current === "paused";
+      if (signals.includes("inactivity") && activityRef.current.kind === "read" && !listening) {
         const next = signal(engineRef.current, "inactivity");
         setEngine(next);
         jump(next);
@@ -94,13 +99,14 @@ export function Focus({
   function jump(e: EngineState = engine) {
     started.current = Date.now();
     lastInput.current = Date.now();
+    audio.stop();
+    setListen("idle");
+    setListenError(null);
     const a = nextActivity(e);
     setActivity(a);
     setDraft("");
-    setChoice(null);
     setConfidence(null);
     setFeedback(null);
-    setTutor(null);
     if (a.kind === "debrief") {
       const ended = endSession(e);
       saveLearner(ended.learner);
@@ -109,9 +115,10 @@ export function Focus({
     }
   }
 
-  function continueAfterRead(unitRead = true) {
+  function continueAfterRead(check: boolean) {
     let e = engine;
-    if (activity.kind === "read" && unitRead) e = markRead(e, activity.unit);
+    if (activity.kind === "read") e = markRead(e, activity.unit);
+    if (check) e = requestCheck(e);
     saveLearner(e.learner);
     setEngine(e);
     jump(e);
@@ -124,9 +131,6 @@ export function Focus({
     const { att: nextAtt, signals } = noteAnswer(att.current, latency, g.success, revealed);
     att.current = nextAtt;
     for (const s of signals) e = signal(e, s);
-    const t = tutorOnItem(item, text);
-    setTutor(t.text);
-    setSources(t.sources.map((x) => x.locator));
     setFeedback(g.note);
     setEngine(e);
   }
@@ -142,28 +146,106 @@ export function Focus({
     jump(e);
   }
 
+  function goChapter(ch: ChapterId) {
+    const e = openChapter(engine, ch);
+    setEngine(e);
+    jump(e);
+  }
+
+  function playSection() {
+    if (activity.kind !== "read" && activity.kind !== "retrieve") return;
+    setListenError(null);
+    setListen("loading");
+    audio.speak(activity.speech, {
+      onState: setListen,
+      onError: (message) => {
+        setListen("idle");
+        setListenError(message);
+      },
+      onEnd: () => setListen("idle"),
+    });
+  }
+
+  function pauseSection() {
+    audio.pause();
+    setListen("paused");
+  }
+
+  function resumeSection() {
+    audio.resume();
+    setListen("speaking");
+  }
+
+  function stopSection() {
+    audio.stop();
+    setListen("idle");
+  }
+
   if (activity.kind === "debrief") return null;
 
   const item = activity.kind === "retrieve" || activity.kind === "predict" ? activity.item : null;
+  const useMcq = Boolean(item?.options && item.options.length === 4 && item.type !== "prediction");
+  const useTyped = Boolean(item && !useMcq);
+  const liveSection: BookSection | undefined = activity.kind === "read" ? activity.section : undefined;
+  const chapter: ChapterId =
+    liveSection?.chapter ?? (item?.chapter as ChapterId | undefined) ?? engine.preferredChapter ?? 1;
+  const kernel = activity.kind === "read" ? activity.kernel : undefined;
+  const hold = kernel?.hold || liveSection?.lede || CHAPTER_META[chapter].hold;
+  const lessonHay = (activity.kind === "read" ? activity.unit.reading : [])
+    .map((r) => `${r.body} ${(r.bullets ?? []).join(" ")}`)
+    .join(" ")
+    .toLowerCase();
+  const trap = activity.kind === "read" ? activity.section.traps[0] : undefined;
+  const showTrap = Boolean(trap && !lessonHay.includes(trap.body.slice(0, 48).toLowerCase()));
 
   return (
     <div
-      className="stage"
+      className="stage quiet-stage"
       onClick={(ev) => {
-        if ((ev.target as HTMLElement).closest("button, textarea, input")) return;
+        if ((ev.target as HTMLElement).closest("button, textarea, input, label, nav, a")) return;
         bumpClick();
       }}
     >
-      <article className="card">
-        <p className="kicker">
-          {label(activity)}
-          {audioOn ? " · spoken" : ""}
-        </p>
-        {activity.kind === "read" && (
+      <article className="card quiet-card">
+        <div className="chapter-pills" role="navigation" aria-label="Chapters">
+          {([1, 2, 3, 4, 5, 6] as const).map((ch) => (
+            <button
+              key={ch}
+              type="button"
+              className={chapter === ch ? "" : "ghost"}
+              data-on={chapter === ch ? "1" : "0"}
+              onClick={() => goChapter(ch)}
+              title={CHAPTER_META[ch].title}
+            >
+              {ch}
+            </button>
+          ))}
+        </div>
+
+        {activity.kind === "read" && kernel && (
           <>
-            <h2>{activity.unit.title}</h2>
-            {activity.unit.comparisonTable && !activity.shortened && (
-              <table className="table">
+            <p className="kicker">
+              {chapter} · {activity.section.title}
+            </p>
+            <h2 className="hold">{hold}</h2>
+            <div className="reading">
+              {activity.unit.reading.map((r, i) => (
+                <section key={`${r.factId ?? "p"}-${i}`}>
+                  {r.heading && r.heading !== activity.section.title && i > 0 ? <h3>{r.heading}</h3> : null}
+                  {r.body ? <p>{r.body}</p> : null}
+                  {r.bullets?.length ? (
+                    <ul>
+                      {r.bullets.map((b) => (
+                        <li key={b.slice(0, 48)}>{b}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))}
+            </div>
+            {activity.unit.comparisonTable && (
+              <table className="table lesson-table">
+                <caption>{activity.unit.comparisonTable.caption}</caption>
                 <thead>
                   <tr>
                     {activity.unit.comparisonTable.headers.map((h) => (
@@ -172,54 +254,45 @@ export function Focus({
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.unit.comparisonTable.rows.map((row, i) => (
-                    <tr key={i}>
-                      {row.map((cell, j) => (
-                        <td key={j}>{cell}</td>
+                  {activity.unit.comparisonTable.rows.map((row) => (
+                    <tr key={row.join("|")}>
+                      {row.map((cell, i) => (
+                        <td key={`${i}-${cell.slice(0, 24)}`}>{cell}</td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
-            <div className="reading">
-              {(activity.shortened ? activity.unit.reading.slice(0, 1) : activity.unit.reading).map((r) => (
-                <section key={r.heading}>
-                  <h3>{r.heading}</h3>
-                  {r.body.split("\n\n").map((p) => (
-                    <p key={p.slice(0, 40)}>{p}</p>
-                  ))}
-                  {r.sources.slice(0, 2).map((s) => (
-                    <div className="source" key={s.locator}>
-                      {s.locator}
-                    </div>
-                  ))}
-                </section>
-              ))}
-            </div>
+            {showTrap && trap && (
+              <p className="mixup">
+                Keep this apart. {trap.body}
+              </p>
+            )}
+            <ListenBar
+              listen={listen}
+              error={listenError}
+              onPlay={playSection}
+              onPause={pauseSection}
+              onResume={resumeSection}
+              onStop={stopSection}
+            />
             <div className="row">
-              <button onClick={() => continueAfterRead(true)}>I have the idea — retrieve it</button>
-              <button
-                className="ghost"
-                onClick={() => {
-                  const { signals } = noteReread(att.current);
-                  att.current = { ...att.current, rereadCount: att.current.rereadCount + 1 };
-                  if (signals.length) {
-                    const e = signal(engine, "reread-loop");
-                    setEngine(e);
-                    jump(e);
-                  }
-                }}
-              >
-                Read once more
+              <button type="button" onClick={() => continueAfterRead(false)}>
+                Next
+              </button>
+              <button type="button" className="ghost quiet-check" onClick={() => continueAfterRead(true)}>
+                Check this
               </button>
             </div>
           </>
         )}
 
-        {item && item.options && item.type !== "prediction" && (
+        {useMcq && item && (
           <>
-            <h2>{item.examStyle ? "Exam-shaped question" : "Question"}</h2>
+            <p className="kicker">
+              {chapter} · {CHAPTER_META[chapter].title}
+            </p>
             <McqCard
               item={item}
               onCommit={(text, _i, conf) => {
@@ -229,69 +302,45 @@ export function Focus({
             />
             {engine.pending && (
               <div className="row">
-                <button onClick={lockConfidence}>Continue</button>
-                <button
-                  className="ghost"
-                  onClick={() => {
-                    const t = tutorExplain(item.conceptIds[0], engine.pending?.auto.success ? undefined : "fail");
-                    setTutor(t.text);
-                    setSources(t.sources.map((x) => x.locator));
-                  }}
-                >
-                  Explain differently
+                <button type="button" onClick={lockConfidence}>
+                  Continue
                 </button>
               </div>
             )}
-            {tutor && <p>{tutor}</p>}
           </>
         )}
 
-        {item && (!item.options || item.type === "prediction") && (
+        {useTyped && item && (
           <>
-            <h2>{item.type === "prediction" ? "Before the text" : "Retrieve in your own words"}</h2>
-            <p className="lede">{item.prompt}</p>
+            <p className="kicker">
+              {chapter} · {CHAPTER_META[chapter].title}
+            </p>
+            <h2 className="hold">{item.prompt}</h2>
             <textarea
               value={draft}
               onChange={(ev) => setDraft(ev.target.value)}
-              placeholder="Answer from memory. Names, limits, who is indemnified."
+              placeholder="From memory."
             />
             {!engine.pending && (
               <div className="row">
-                <button disabled={!draft.trim()} onClick={() => submitItem(item, draft, false)}>
-                  Commit answer
+                <button type="button" disabled={!draft.trim()} onClick={() => submitItem(item, draft, false)}>
+                  Check this
                 </button>
-                {item.type !== "prediction" && (
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      setDraft(item.rubric);
-                      submitItem(item, item.expected[0] ?? "", true);
-                    }}
-                  >
-                    Reveal sourced point
-                  </button>
-                )}
               </div>
             )}
             {engine.pending && (
               <>
                 <p className="lede">{feedback}</p>
-                {tutor && <p>{tutor}</p>}
-                {sources.map((s) => (
-                  <div className="source" key={s}>
-                    {s}
-                  </div>
-                ))}
-                <p className="meta">How sure were you before seeing the sourced point?</p>
+                <p className="meta">How sure?</p>
                 <div className="confidence">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} data-on={confidence === n ? "1" : "0"} onClick={() => setConfidence(n)}>
+                    <button key={n} type="button" data-on={confidence === n ? "1" : "0"} onClick={() => setConfidence(n)}>
                       {n}
                     </button>
                   ))}
                 </div>
                 <div className="row">
-                  <button disabled={confidence == null} onClick={lockConfidence}>
+                  <button type="button" disabled={confidence == null} onClick={lockConfidence}>
                     Continue
                   </button>
                 </div>
@@ -299,30 +348,7 @@ export function Focus({
             )}
           </>
         )}
-
-        <p className="meta">
-          The engine is choosing the next move. Do not hunt the syllabus from here.
-          <button className="ghost" style={{ marginLeft: 8 }} onClick={() => setAudioOn((v) => !v)}>
-            {audioOn ? "Mute" : "Speak this step"}
-          </button>
-        </p>
       </article>
     </div>
   );
-}
-
-function label(a: FocusActivity): string {
-  if (a.kind === "read") return a.shortened ? "Shortened exposition" : "Focused reading";
-  if (a.kind === "predict") return "Predict before explanation";
-  if (a.kind === "retrieve") {
-    const map = {
-      "due-review": "Spaced retrieval",
-      encode: "Immediate retrieval",
-      "attention-switch": "Attention adaptation",
-      cumulative: "Earlier material",
-      misconception: "Distinguish confused ideas",
-    };
-    return map[a.mode];
-  }
-  return a.kind;
 }

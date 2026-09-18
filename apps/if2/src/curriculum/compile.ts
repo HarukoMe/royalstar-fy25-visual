@@ -1,10 +1,12 @@
-import type { AuthoredFact, Concept, LearningUnit, PracticeItem, Provenance } from "../engine/types";
+import type { AuthoredFact, BookSection, Concept, LearningUnit, PracticeItem, Provenance } from "../engine/types";
 import { FACTS, CHAPTER_META } from "./facts";
 import { MORE_FACTS } from "./facts-more";
 import { DEPTH_FACTS } from "./facts-depth";
 import { QUESTIONS, type AuthoredQuestion } from "./questions";
 import { QUESTIONS_MORE } from "./questions-more";
 import type { ChapterId } from "../engine/types";
+import { chapterHold, comparisonForSection, holdForFact, roleForFact, seedTraps, trapsForSection } from "./book-layer";
+import { lessonFor, resetSourceLessonCache } from "./source-lessons";
 
 export const ALL_FACTS: AuthoredFact[] = [...FACTS, ...MORE_FACTS, ...DEPTH_FACTS];
 export const ALL_QUESTIONS: AuthoredQuestion[] = [...QUESTIONS, ...QUESTIONS_MORE];
@@ -15,6 +17,15 @@ function kernels(claim: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(claim))) out.push(m[1]);
   return out;
+}
+
+function alreadyOnPage(hay: string, claim: string): boolean {
+  const text = claim.replace(/\[\[|\]\]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (text.length < 24) return hay.includes(text);
+  if (hay.includes(text.slice(0, 36))) return true;
+  const words = text.split(/[^a-z0-9£.]+/).filter((w) => w.length > 4);
+  if (!words.length) return false;
+  return words.filter((w) => hay.includes(w)).length / words.length >= 0.72;
 }
 
 function plain(claim: string): string {
@@ -98,7 +109,7 @@ export function compileUnits(): LearningUnit[] {
         sources: f.sources,
       })),
       prediction: facts.find((f) => f.prediction)?.prediction,
-      comparisonTable: comparisonFor(c.id, facts),
+      comparisonTable: comparisonForSection(c.chapter, facts, 0),
     });
   }
   return units.sort((a, b) => {
@@ -109,18 +120,139 @@ export function compileUnits(): LearningUnit[] {
   });
 }
 
-function comparisonFor(conceptId: string, facts: AuthoredFact[]): LearningUnit["comparisonTable"] {
-  if (!facts.some((f) => f.id === "m-four-levels")) return undefined;
-  if (conceptId !== "motor-cover-levels") return undefined;
+function slugSection(chapter: ChapterId, title: string, used: Set<string>): string {
+  const base = title
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  let id = `sec-${chapter}-${base || "section"}`;
+  let n = 2;
+  while (used.has(id)) {
+    id = `sec-${chapter}-${base || "section"}-${n}`;
+    n += 1;
+  }
+  used.add(id);
+  return id;
+}
+
+/** Group sourced claims into Key Facts chapter → section order. */
+export function compileSections(): BookSection[] {
+  const buckets: { chapter: ChapterId; title: string; facts: AuthoredFact[] }[] = [];
+  const index = new Map<string, number>();
+  for (const f of ALL_FACTS) {
+    const key = `${f.chapter}::${f.section}`;
+    const existing = index.get(key);
+    if (existing == null) {
+      index.set(key, buckets.length);
+      buckets.push({ chapter: f.chapter, title: f.section, facts: [f] });
+    } else {
+      buckets[existing].facts.push(f);
+    }
+  }
+  const countByChapter: Record<ChapterId, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  for (const b of buckets) countByChapter[b.chapter] += 1;
+  const seenInChapter: Record<ChapterId, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const used = new Set<string>();
+  const titleByConcept: Record<string, string> = {};
+  for (const f of ALL_FACTS) {
+    if (!titleByConcept[f.conceptId]) titleByConcept[f.conceptId] = f.title;
+  }
+  return buckets.map((b) => {
+    seenInChapter[b.chapter] += 1;
+    const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
+    const sourced = lessonFor(b.chapter, b.title, b.facts);
+    const hold = holdForFact(b.facts[0]!, titleByConcept);
+    const reading: BookSection["reading"] = [];
+    const hayOf = () =>
+      reading
+        .map((r) => `${r.body} ${(r.bullets ?? []).join(" ")}`)
+        .join(" ")
+        .toLowerCase();
+    if (sourced?.chunks.length) {
+      sourced.chunks.forEach((chunk, i) => {
+        reading.push({
+          heading: i === 0 ? undefined : chunk.heading,
+          body: chunk.body,
+          bullets: chunk.bullets,
+          sources: sourced.sources,
+          role: i === 0 ? "open" : "fact",
+          factId: b.facts[Math.min(i, b.facts.length - 1)]?.id,
+          hold: i === 0 ? hold : undefined,
+        });
+      });
+    }
+    b.facts.forEach((f, i) => {
+      const claim = plain(f.claim);
+      const hay = hayOf();
+      const examBit = f.sources.some((s) => s.kind === "exam-guide");
+      const needClaim =
+        !sourced?.chunks.length ||
+        examBit ||
+        (sourced.text.length < 400 && !alreadyOnPage(hay, claim));
+      if (needClaim && !alreadyOnPage(hay, claim)) {
+        reading.push({
+          body: claim,
+          sources: f.sources,
+          role: roleForFact(f, i),
+          factId: f.id,
+          hold: reading.some((r) => r.hold) ? undefined : holdForFact(f, titleByConcept),
+        });
+      }
+      if (f.extra && !(sourced && sourced.text.length > 500) && !alreadyOnPage(hayOf(), f.extra)) {
+        reading.push({
+          body: f.extra,
+          sources: f.sources,
+          role: f.kind === "exclusion" ? "trap" : "why",
+          factId: f.id,
+        });
+      }
+    });
+    if (!reading.length) {
+      reading.push({
+        body: plain(b.facts[0]!.claim),
+        sources: b.facts[0]!.sources,
+        role: "open",
+        factId: b.facts[0]!.id,
+        hold,
+      });
+    } else if (!reading[0]!.hold) {
+      reading[0]!.hold = hold;
+    }
+    return {
+      id: slugSection(b.chapter, b.title, used),
+      chapter: b.chapter,
+      chapterTitle: CHAPTER_META[b.chapter].title,
+      title: b.title,
+      indexInChapter: seenInChapter[b.chapter],
+      sectionCountInChapter: countByChapter[b.chapter],
+      conceptIds,
+      factIds: b.facts.map((f) => f.id),
+      lede: seenInChapter[b.chapter] === 1 ? chapterHold(b.chapter) : undefined,
+      traps: [...seedTraps(b.chapter, seenInChapter[b.chapter]), ...trapsForSection(b.facts, titleByConcept)].slice(0, 4),
+      reading,
+      comparisonTable: comparisonForSection(b.chapter, b.facts, seenInChapter[b.chapter]),
+    };
+  });
+}
+
+export function sectionAsUnit(section: BookSection): LearningUnit {
   return {
-    caption: "Private motor cover compared (IF2 study text / key facts)",
-    headers: ["Level", "Own vehicle", "Third party injury", "Third party property (private car)"],
-    rows: [
-      ["RTA only", "None", "Unlimited", "£1.2 million (minimum)"],
-      ["TPO", "None", "Unlimited", "Usually £20 million"],
-      ["TPFT", "Fire, lightning, explosion, theft", "Unlimited", "Usually £20 million"],
-      ["Comprehensive", "Accidental & malicious damage (‘all risks’ of own damage, with exclusions)", "Unlimited", "Usually £20 million"],
-    ],
+    id: section.id,
+    chapter: section.chapter,
+    title: section.title,
+    conceptIds: section.conceptIds,
+    factIds: section.factIds,
+    load: Math.min(5, Math.max(1, section.conceptIds.length)) as 1 | 2 | 3 | 4 | 5,
+    prerequisites: [],
+    reading: section.reading.map((r) => ({
+      heading: r.heading || section.title,
+      body: r.body,
+      sources: r.sources,
+      factId: r.factId,
+      hold: r.hold,
+    })),
+    comparisonTable: section.comparisonTable,
   };
 }
 
@@ -481,6 +613,7 @@ export function curriculumStats() {
     facts: ALL_FACTS.length,
     concepts: concepts.length,
     units: units.length,
+    sections: compileSections().length,
     items: items.length,
     mcq: mcq.length,
     examStyleMcq: mcq.filter((i) => i.examStyle).length,
@@ -516,6 +649,7 @@ export type Curriculum = {
   factById: Record<string, AuthoredFact>;
   concepts: Concept[];
   units: LearningUnit[];
+  sections: BookSection[];
   items: PracticeItem[];
   questions: AuthoredQuestion[];
   stats: ReturnType<typeof curriculumStats>;
@@ -529,6 +663,7 @@ export function loadCurriculum(): Curriculum {
     factById: Object.fromEntries(ALL_FACTS.map((f) => [f.id, f])),
     concepts: compileConcepts(),
     units: compileUnits(),
+    sections: compileSections(),
     items: compileItems(),
     questions: ALL_QUESTIONS,
     stats: curriculumStats(),
@@ -538,4 +673,5 @@ export function loadCurriculum(): Curriculum {
 
 export function resetCurriculumCache() {
   _cache = null;
+  resetSourceLessonCache();
 }
