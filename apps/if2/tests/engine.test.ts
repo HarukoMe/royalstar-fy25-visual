@@ -15,6 +15,7 @@ import { beginGrade, commitGrade, endSession, grade, markRead, nextActivity, sig
 import { tutorExplain } from "../src/engine/tutor";
 import { finishExam, startExam } from "../src/engine/exam";
 import { shuffleMcq } from "../src/engine/shuffle";
+import { chunkForKokoro, normalizeBaseUrl, parseVoiceIds, speechTexts } from "../src/engine/kokoro";
 
 describe("curriculum integrity", () => {
   it("stays inside chapters 1–6 and LO 1.1", () => {
@@ -313,5 +314,21 @@ describe("progress backup", () => {
     const r = storage.importProgress(bundle);
     expect(r.ok).toBe(true);
     expect(storage.loadLearner().sessionCount).toBe(3);
+  });
+});
+
+describe("kokoro speech", () => {
+  it("chunks section prose without inventing words", () => {
+    expect(normalizeBaseUrl("http://127.0.0.1:8880/")).toBe("http://127.0.0.1:8880");
+    const texts = speechTexts([
+      { kind: "narrate", text: "Chapter 1. Motor insurance.", interruptible: true },
+      { kind: "wait", text: "", interruptible: true },
+      { kind: "narrate", text: "It is illegal to drive on a public road without cover.", interruptible: true },
+    ]);
+    expect(texts.join(" ")).toContain("illegal to drive");
+    expect(texts.join(" ")).not.toMatch(/This unit is/);
+    const chunks = chunkForKokoro(["aaa", "bbb", "ccc"], 10);
+    expect(chunks.join("|")).toBe("aaa\n\nbbb|ccc");
+    expect(parseVoiceIds({ voices: [{ id: "bf_emma" }, { id: "af_bella" }] })).toEqual(["bf_emma", "af_bella"]);
   });
 });

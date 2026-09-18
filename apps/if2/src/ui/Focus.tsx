@@ -20,10 +20,11 @@ import {
   type EngineState,
 } from "../engine/session";
 import { tutorExplain, tutorOnItem } from "../engine/tutor";
-import { createBrowserAudio } from "../engine/audio";
+import { createBrowserAudio, type ListenState } from "../engine/audio";
 import { saveLearner, saveSession } from "../storage";
 import type { ChapterId, PracticeItem } from "../engine/types";
 import { McqCard } from "./McqCard";
+import { ListenBar } from "./ListenBar";
 
 export function Focus({
   engine,
@@ -40,7 +41,8 @@ export function Focus({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [tutor, setTutor] = useState<string | null>(null);
   const [sources, setSources] = useState<string[]>([]);
-  const [listen, setListen] = useState<"idle" | "speaking" | "paused">("idle");
+  const [listen, setListen] = useState<ListenState>("idle");
+  const [listenError, setListenError] = useState<string | null>(null);
   const started = useRef(Date.now());
   const lastInput = useRef(Date.now());
   const att = useRef<AttentionSnapshot>(emptyAttention());
@@ -97,6 +99,7 @@ export function Focus({
     lastInput.current = Date.now();
     audio.stop();
     setListen("idle");
+    setListenError(null);
     const a = nextActivity(e);
     setActivity(a);
     setDraft("");
@@ -152,8 +155,16 @@ export function Focus({
 
   function playSection() {
     if (activity.kind !== "read" && activity.kind !== "retrieve") return;
-    audio.speak(activity.speech, () => setListen("idle"));
-    setListen("speaking");
+    setListenError(null);
+    setListen("loading");
+    audio.speak(activity.speech, {
+      onState: setListen,
+      onError: (message) => {
+        setListen("idle");
+        setListenError(message);
+      },
+      onEnd: () => setListen("idle"),
+    });
   }
 
   function pauseSection() {
@@ -242,8 +253,8 @@ export function Focus({
               ))}
             </div>
             <ListenBar
-              supported={audio.supported}
               listen={listen}
+              error={listenError}
               onPlay={playSection}
               onPause={pauseSection}
               onResume={resumeSection}
@@ -365,53 +376,6 @@ export function Focus({
           </label>
         </p>
       </article>
-    </div>
-  );
-}
-
-function ListenBar({
-  supported,
-  listen,
-  onPlay,
-  onPause,
-  onResume,
-  onStop,
-}: {
-  supported: boolean;
-  listen: "idle" | "speaking" | "paused";
-  onPlay: () => void;
-  onPause: () => void;
-  onResume: () => void;
-  onStop: () => void;
-}) {
-  if (!supported) {
-    return <p className="meta">This browser has no read-aloud (Web Speech). The text on the page is the same material.</p>;
-  }
-  return (
-    <div className="listen-bar" role="group" aria-label="Read this section aloud">
-      {listen === "idle" && (
-        <button type="button" onClick={onPlay}>
-          Listen to this section
-        </button>
-      )}
-      {listen === "speaking" && (
-        <button type="button" className="ghost" onClick={onPause}>
-          Pause
-        </button>
-      )}
-      {listen === "paused" && (
-        <button type="button" onClick={onResume}>
-          Resume
-        </button>
-      )}
-      {listen !== "idle" && (
-        <button type="button" className="ghost" onClick={onStop}>
-          Stop
-        </button>
-      )}
-      <span className="meta" style={{ margin: 0 }}>
-        Same words as the page
-      </span>
     </div>
   );
 }

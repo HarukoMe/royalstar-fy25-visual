@@ -1,95 +1,143 @@
 import type { SpeechAct } from "./types";
-import type { FocusActivity } from "./session";
+import {
+  chunkForKokoro,
+  loadKokoroSettings,
+  speechTexts,
+  synthesizeKokoro,
+  type KokoroSettings,
+} from "./kokoro";
 
-export function speechActsFor(activity: FocusActivity): SpeechAct[] {
+export function speechActsFor(activity: { speech: SpeechAct[] }): SpeechAct[] {
   return activity.speech;
 }
 
-export type AudioStatus = "idle" | "speaking" | "paused";
+export type ListenState = "idle" | "loading" | "speaking" | "paused";
 
 export type AudioBridge = {
-  speak: (acts: SpeechAct[], onEnd?: () => void) => void;
+  speak: (
+    acts: SpeechAct[],
+    hooks?: {
+      onState?: (s: ListenState) => void;
+      onError?: (message: string) => void;
+      onEnd?: () => void;
+    }
+  ) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
   supported: boolean;
-  status: () => AudioStatus;
+  status: () => ListenState;
 };
 
 export function createBrowserAudio(): AudioBridge {
-  const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
-  let queue: SpeechSynthesisUtterance[] = [];
+  const el = typeof Audio !== "undefined" ? new Audio() : null;
+  let objectUrl: string | null = null;
+  let chunks: string[] = [];
   let index = 0;
+  let generation = 0;
   let paused = false;
-  let onEndCb: (() => void) | undefined;
+  let state: ListenState = "idle";
+  let hooks: { onState?: (s: ListenState) => void; onError?: (message: string) => void; onEnd?: () => void } = {};
+  let settings: KokoroSettings = loadKokoroSettings();
 
-  function speakFrom(i: number) {
-    if (!synth) return onEndCb?.();
-    if (i >= queue.length) {
-      paused = false;
-      queue = [];
-      index = 0;
-      onEndCb?.();
+  function setState(next: ListenState) {
+    state = next;
+    hooks.onState?.(next);
+  }
+
+  function revoke() {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
+    }
+  }
+
+  function stopInternal(advanceGen = true) {
+    if (advanceGen) generation += 1;
+    paused = false;
+    chunks = [];
+    index = 0;
+    if (el) {
+      el.pause();
+      el.removeAttribute("src");
+      el.load();
+    }
+    revoke();
+    setState("idle");
+  }
+
+  async function playIndex(i: number, mine: number) {
+    if (!el || mine !== generation) return;
+    if (i >= chunks.length) {
+      stopInternal(false);
+      hooks.onEnd?.();
       return;
     }
     index = i;
-    const u = queue[i];
-    u.onend = () => {
-      if (paused) return;
-      speakFrom(i + 1);
-    };
-    u.onerror = () => {
-      if (paused) return;
-      speakFrom(i + 1);
-    };
-    synth.speak(u);
+    paused = false;
+    setState("loading");
+    try {
+      const blob = await synthesizeKokoro(settings, chunks[i]);
+      if (mine !== generation) return;
+      revoke();
+      objectUrl = URL.createObjectURL(blob);
+      el.src = objectUrl;
+      el.onended = () => {
+        if (mine !== generation || paused) return;
+        void playIndex(i + 1, mine);
+      };
+      await el.play();
+      if (mine !== generation) return;
+      setState("speaking");
+    } catch (err) {
+      if (mine !== generation) return;
+      const message = err instanceof Error ? err.message : "Kokoro failed.";
+      stopInternal(false);
+      hooks.onError?.(message);
+    }
+  }
+
+  if (el) {
+    el.preload = "auto";
   }
 
   return {
-    supported: Boolean(synth),
-    status() {
-      if (paused) return "paused";
-      if (synth?.speaking) return "speaking";
-      return "idle";
-    },
+    supported: Boolean(el),
+    status: () => state,
     stop() {
-      paused = false;
-      queue = [];
-      index = 0;
-      synth?.cancel();
+      stopInternal(true);
     },
     pause() {
-      if (!synth) return;
-      if (!synth.speaking && !paused) return;
+      if (!el || state === "idle" || state === "loading") return;
       paused = true;
-      synth.pause();
-      if (!synth.paused) synth.cancel();
+      el.pause();
+      setState("paused");
     },
     resume() {
-      if (!synth) return;
-      if (synth.paused) {
-        paused = false;
-        synth.resume();
+      if (!el || !paused) return;
+      paused = false;
+      void el.play().then(
+        () => setState("speaking"),
+        (err) => hooks.onError?.(err instanceof Error ? err.message : "Could not resume.")
+      );
+    },
+    speak(acts, nextHooks) {
+      generation += 1;
+      const mine = generation;
+      hooks = nextHooks ?? {};
+      settings = loadKokoroSettings();
+      paused = false;
+      const texts = speechTexts(acts);
+      chunks = chunkForKokoro(texts);
+      if (!el) {
+        hooks.onError?.("This browser cannot play audio.");
         return;
       }
-      if (paused) {
-        paused = false;
-        speakFrom(index);
+      if (!chunks.length) {
+        hooks.onEnd?.();
+        return;
       }
-    },
-    speak(acts, onEnd) {
-      if (!synth) return onEnd?.();
-      synth.cancel();
-      paused = false;
-      onEndCb = onEnd;
-      queue = acts
-        .filter((a) => a.kind !== "wait" && a.text.trim())
-        .map((a) => {
-          const u = new SpeechSynthesisUtterance(a.text);
-          u.rate = a.kind === "ask" ? 0.95 : 1;
-          return u;
-        });
-      speakFrom(0);
+      void playIndex(0, mine);
     },
   };
 }
