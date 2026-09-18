@@ -75,17 +75,21 @@ export function nextNewUnitId(model: LearnerModel): string | null {
 }
 
 export function nextNewSection(model: LearnerModel, chapter?: ChapterId): BookSection | null {
-  const { sections, concepts } = loadCurriculum();
+  const { sections, concepts, factById } = loadCurriculum();
   const conceptById = Object.fromEntries(concepts.map((c) => [c.id, c]));
-  const seen = (id: string) => (model.concepts[id]?.exposures ?? 0) > 0;
-  const masteredEnough = (id: string) => (model.concepts[id]?.estimatedMastery ?? 0) >= 0.25 || (model.concepts[id]?.exposures ?? 0) >= 1;
+  const seenFact = (id: string) => (model.seenFacts?.[id] ?? 0) > 0;
+  const masteredEnough = (id: string) =>
+    (model.concepts[id]?.estimatedMastery ?? 0) >= 0.25 || (model.concepts[id]?.exposures ?? 0) >= 1;
 
   const pickFrom = (ch: ChapterId, ignorePrereq: boolean): BookSection | null => {
     for (const s of sections.filter((sec) => sec.chapter === ch)) {
-      const unseen = s.conceptIds.filter((id) => !seen(id));
-      if (!unseen.length) continue;
+      const unseenFacts = s.factIds.filter((id) => !seenFact(id));
+      if (!unseenFacts.length) continue;
       if (ignorePrereq) return s;
-      const prereqOk = unseen.every((id) => (conceptById[id]?.prerequisites ?? []).every(masteredEnough));
+      const prereqOk = unseenFacts.every((fid) => {
+        const cid = factById[fid]?.conceptId;
+        return (conceptById[cid ?? ""]?.prerequisites ?? []).every(masteredEnough);
+      });
       if (prereqOk) return s;
     }
     return null;

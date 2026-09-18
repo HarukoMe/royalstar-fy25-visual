@@ -122,18 +122,21 @@ describe("mastery vs accessibility", () => {
 });
 
 describe("session engine", () => {
-  it("starts with a book section, not a prediction prompt or quiz dump", () => {
+  it("starts with a quiet card: one hold and one sourced line, not a quiz dump", () => {
     const s = startSession(createLearner(), Date.now());
     const a = nextActivity(s, Date.now());
     expect(a.kind).toBe("read");
     if (a.kind === "read") {
       expect(a.section.chapter).toBe(1);
-      expect(a.section.title.length).toBeGreaterThan(3);
+      expect(a.unit.factIds).toHaveLength(1);
+      expect(a.kernel.hold!.length).toBeGreaterThan(20);
       expect(a.speech.some((x) => /This unit is/.test(x.text))).toBe(false);
       const claim = loadCurriculum().facts[0]!.claim.replace(/\[\[|\]\]/g, "");
       expect(a.speech.some((x) => x.text.includes(claim.slice(0, 40)))).toBe(true);
+      expect(a.speech.some((x) => x.text.includes(a.kernel.hold!))).toBe(true);
       const joined = a.speech.map((x) => x.text).join(" ");
-      expect(joined.length).toBeGreaterThan(120);
+      expect(joined.length).toBeGreaterThan(80);
+      expect(joined).not.toMatch(/Comparison\.|Exam trap/);
     }
   });
 
@@ -145,7 +148,7 @@ describe("session engine", () => {
     expect(stats.sections).toBe(sections.length);
     expect(sections.every((s) => s.chapter >= 1 && s.chapter <= 6)).toBe(true);
     expect(sections.filter((s) => s.chapter === 6).length).toBeGreaterThan(8);
-    expect(sections.some((s) => s.traps.length > 0)).toBe(true);
+    expect(sections.some((s) => s.reading.some((r) => r.hold && r.hold.length > 20))).toBe(true);
     expect(sections.filter((s) => s.chapter === 6).some((s) => s.comparisonTable)).toBe(true);
     expect(facts.some((f) => f.id === "l-el-min-limit" && f.claim.includes("£5 million"))).toBe(true);
     expect(DEFAULT_KOKORO.voice).toContain("af_heart");
@@ -175,7 +178,7 @@ describe("session engine", () => {
     if (a.kind === "read") expect(a.section.chapter).toBe(4);
   });
 
-  it("opens chapter 6 on the liability book with a comparison table", () => {
+  it("opens chapter 6 on a who-was-hurt hold, not a table dump", () => {
     const s = startSession(createLearner(), Date.now(), { chapter: 6 });
     const a = nextActivity(s);
     expect(a.kind).toBe("read");
@@ -184,7 +187,11 @@ describe("session engine", () => {
       expect(a.section.chapterTitle).toMatch(/Liability/i);
       expect(a.section.comparisonTable?.rows.length).toBeGreaterThan(3);
       expect(a.section.lede).toMatch(/who was hurt/i);
-      expect(a.speech.some((x) => /Exam trap|Comparison|£5 million|employers/i.test(x.text))).toBe(true);
+      expect(a.kernel.hold).toMatch(/who was hurt/i);
+      expect(a.unit.factIds).toHaveLength(1);
+      const joined = a.speech.map((x) => x.text).join(" ");
+      expect(joined).toMatch(/who was hurt|employers/i);
+      expect(joined).not.toMatch(/Comparison\.|Exam trap/);
     }
   });
 
@@ -222,6 +229,32 @@ describe("session engine", () => {
       a = nextActivity(s);
       expect(a.kind).toBe("retrieve");
       if (a.kind === "retrieve") expect(a.mode).toBe("encode");
+    }
+  });
+
+  it("does not skip later facts that share a concept", () => {
+    const first = loadCurriculum().sections[0]!;
+    expect(first.factIds.length).toBeGreaterThan(1);
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    expect(a.kind).toBe("read");
+    const firstFact = a.kind === "read" ? a.unit.factIds[0] : "";
+    if (a.kind === "read") {
+      expect(a.unit.factIds).toHaveLength(1);
+      s = markRead(s, a.unit);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("retrieve");
+    if (a.kind === "retrieve") {
+      const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "";
+      s = beginGrade(s, a.item, ans, 8000, false);
+      s = commitGrade(s, 4);
+      a = nextActivity(s);
+    }
+    expect(a.kind).toBe("read");
+    if (a.kind === "read") {
+      expect(a.unit.factIds[0]).not.toBe(firstFact);
+      expect(first.factIds).toContain(a.unit.factIds[0]);
     }
   });
 
@@ -301,7 +334,7 @@ describe("breadth across sessions", () => {
     let s = startSession(createLearner());
     let a = nextActivity(s);
     expect(a.kind).toBe("read");
-    const firstUnit = a.kind === "read" ? a.unit.id : "";
+    const firstFact = a.kind === "read" ? a.unit.factIds[0] : "";
     if (a.kind === "read") {
       s = markRead(s, a.unit);
       a = nextActivity(s);
@@ -323,7 +356,7 @@ describe("breadth across sessions", () => {
       s = commitGrade(s, 3);
       a = nextActivity(s);
     }
-    if (a.kind === "read") expect(a.unit.id).not.toBe(firstUnit);
+    if (a.kind === "read") expect(a.unit.factIds[0]).not.toBe(firstFact);
   });
 });
 

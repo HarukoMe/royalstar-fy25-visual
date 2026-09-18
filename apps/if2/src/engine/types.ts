@@ -71,7 +71,7 @@ export type LearningUnit = {
   factIds: string[];
   load: 1 | 2 | 3 | 4 | 5;
   prerequisites: string[];
-  reading: { heading: string; body: string; sources: Provenance[] }[];
+  reading: { heading?: string; body: string; sources: Provenance[]; factId?: string; hold?: string }[];
   prediction?: string;
   comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
 };
@@ -96,7 +96,14 @@ export type BookSection = {
   factIds: string[];
   lede?: string;
   traps: BookTrap[];
-  reading: { heading?: string; body: string; sources: Provenance[]; role?: ReadingRole }[];
+  reading: {
+    heading?: string;
+    body: string;
+    sources: Provenance[];
+    role?: ReadingRole;
+    factId?: string;
+    hold?: string;
+  }[];
   comparisonTable?: { caption: string; headers: string[]; rows: string[][] };
 };
 
@@ -238,6 +245,8 @@ export type LearnerModel = {
   examReadiness: Record<string, number>;
   questionStats: Record<string, QuestionStat>;
   examAttempts: ExamAttempt[];
+  /** Fact ids already shown as a quiet card. Shared concepts must not skip the rest. */
+  seenFacts: Record<string, number>;
 };
 
 export type PedagogicalDecision = {

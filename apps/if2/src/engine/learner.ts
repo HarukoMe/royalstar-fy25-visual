@@ -54,6 +54,7 @@ export function createLearner(): LearnerModel {
     examReadiness: { "1.1": 0 },
     questionStats: {},
     examAttempts: [],
+    seenFacts: {},
   };
 }
 
@@ -229,5 +230,6 @@ export function hydrateLearner(raw: LearnerModel): LearnerModel {
     concepts,
     questionStats: raw.questionStats ?? {},
     examAttempts: raw.examAttempts ?? [],
+    seenFacts: raw.seenFacts ?? {},
   };
 }

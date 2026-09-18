@@ -52,12 +52,6 @@ export function McqCard({
   return (
     <div>
       <p className="lede">{item.prompt}</p>
-      {item.questionKind && (
-        <p className="kicker">
-          {item.questionKind.replace("-", " ")} · {item.cognitive ?? "recognition"}
-          {item.difficulty ? ` · demand ${item.difficulty}` : ""}
-        </p>
-      )}
       <div className="options mcq-options">
         {shuffled.options.map((o, i) => {
           let state = "";
@@ -79,7 +73,7 @@ export function McqCard({
       </div>
       {!exam && !locked && (
         <>
-          <p className="meta">How sure are you? Then lock the answer — the key is hidden until you do.</p>
+          <p className="meta">How sure?</p>
           <div className="confidence">
             {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} data-on={confidence === n ? "1" : "0"} onClick={() => setConfidence(n)}>
@@ -100,32 +94,13 @@ export function McqCard({
         <div className="mcq-feedback">
           <p className="lede">{choice === correct ? "That is the sourced key." : "Not the sourced key."}</p>
           <p>
-            <strong>Why the correct option is right.</strong> {item.whyCorrect ?? item.rubric}
+            <strong>Why the right one is right.</strong> {item.whyCorrect ?? item.rubric}
           </p>
           {choice !== correct && item.whyWrong && (
             <p>
-              <strong>Why your option is wrong.</strong> {rationaleFor(item, shuffled.options[choice])}
+              <strong>Why yours is wrong.</strong> {rationaleFor(item, shuffled.options[choice])}
             </p>
           )}
-          {item.whyWrong && item.options && (
-            <details>
-              <summary>The other distractors</summary>
-              <ul>
-                {shuffled.options.map((o, i) =>
-                  i === correct ? null : (
-                    <li key={o}>
-                      <em>{o}</em> — {rationaleFor(item, o)}
-                    </li>
-                  )
-                )}
-              </ul>
-            </details>
-          )}
-          {item.sources.map((s) => (
-            <div className="source" key={s.locator}>
-              {s.locator}
-            </div>
-          ))}
         </div>
       )}
     </div>

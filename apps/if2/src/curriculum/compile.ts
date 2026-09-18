@@ -5,7 +5,7 @@ import { DEPTH_FACTS } from "./facts-depth";
 import { QUESTIONS, type AuthoredQuestion } from "./questions";
 import { QUESTIONS_MORE } from "./questions-more";
 import type { ChapterId } from "../engine/types";
-import { chapterHold, comparisonForSection, roleForFact, seedTraps, trapsForSection } from "./book-layer";
+import { chapterHold, comparisonForSection, holdForFact, roleForFact, seedTraps, trapsForSection } from "./book-layer";
 
 export const ALL_FACTS: AuthoredFact[] = [...FACTS, ...MORE_FACTS, ...DEPTH_FACTS];
 export const ALL_QUESTIONS: AuthoredQuestion[] = [...QUESTIONS, ...QUESTIONS_MORE];
@@ -151,25 +151,13 @@ export function compileSections(): BookSection[] {
   return buckets.map((b) => {
     seenInChapter[b.chapter] += 1;
     const conceptIds = [...new Set(b.facts.map((f) => f.conceptId))];
-    const reading = b.facts.flatMap((f, i) => {
-      const role = roleForFact(f, i);
-      const blocks: BookSection["reading"] = [
-        {
-          heading: f.title === b.title ? undefined : f.title,
-          body: plain(f.claim),
-          sources: f.sources,
-          role,
-        },
-      ];
-      if (f.extra) {
-        blocks.push({
-          body: f.extra,
-          sources: f.sources,
-          role: f.kind === "exclusion" ? "trap" : "why",
-        });
-      }
-      return blocks;
-    });
+    const reading = b.facts.map((f, i) => ({
+      body: plain(f.claim),
+      sources: f.sources,
+      role: roleForFact(f, i),
+      factId: f.id,
+      hold: holdForFact(f, titleByConcept),
+    }));
     return {
       id: slugSection(b.chapter, b.title, used),
       chapter: b.chapter,
@@ -200,6 +188,8 @@ export function sectionAsUnit(section: BookSection): LearningUnit {
       heading: r.heading || section.title,
       body: r.body,
       sources: r.sources,
+      factId: r.factId,
+      hold: r.hold,
     })),
     comparisonTable: section.comparisonTable,
   };

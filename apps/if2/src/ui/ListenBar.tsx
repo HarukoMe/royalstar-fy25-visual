@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   DEFAULT_KOKORO,
   KOKORO_VOICES,
-  STUDIO_MIX,
   loadKokoroSettings,
   probeKokoro,
   saveKokoroSettings,
@@ -34,7 +33,6 @@ export function ListenBar({
     probeKokoro(settings.baseUrl).then((r) => {
       if (!live) return;
       setStatus(r.ok ? "up" : "down");
-      if (!r.ok && typeof window !== "undefined" && window.matchMedia("(min-width: 720px)").matches) setOpen(true);
     });
     return () => {
       live = false;
@@ -62,7 +60,7 @@ export function ListenBar({
       <div className="listen-bar" role="group" aria-label="Read this section aloud">
         {listen === "idle" && (
           <button type="button" onClick={onPlay}>
-            Listen to this lesson
+            Listen
           </button>
         )}
         {listen === "loading" && (
@@ -86,11 +84,7 @@ export function ListenBar({
           </button>
         )}
         <span className="meta" style={{ margin: 0 }}>
-          {status === "up"
-            ? `Kokoro · ${settings.voice === STUDIO_MIX ? "studio mix" : settings.voice}`
-            : status === "down"
-              ? "Kokoro not reachable"
-              : "Kokoro · checking"}
+          {status === "down" ? "Voice not reachable" : null}
         </span>
         <button type="button" className="ghost" onClick={() => setOpen((v) => !v)}>
           Voice

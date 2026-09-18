@@ -35,6 +35,7 @@ export type FocusActivity =
       section: BookSection;
       shortened: boolean;
       speech: SpeechAct[];
+      kernel: BookSection["reading"][number];
     }
   | {
       kind: "retrieve";
@@ -141,7 +142,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     state.forceSectionId = undefined;
     if (jumped) {
       decide(state, now, "Opened a chosen book section", [`ch.${jumped.chapter} ${jumped.title}`], "read");
-      return readAct(jumped, false);
+      return readAct(jumped, false, pickKernel(jumped, state.learner));
     }
   }
 
@@ -154,7 +155,7 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
     );
     const noRetrieval = (st?.successfulRetrievals ?? 0) + (st?.failedRetrievals ?? 0) === 0 && !retrievedThisSession;
     if (justRead && noRetrieval) {
-      const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId });
+      const item = pickItem(curr, lastIntro, state, { preferMcq: true, avoidId: state.lastItemId, factIds: lastReadFacts(state) });
       decide(state, now, "One MCQ after the section just read", ["testing effect", lastIntro], "retrieve");
       return retrieveAct(item, "encode", state);
     }
@@ -171,12 +172,11 @@ export function nextActivity(state: EngineState, now = Date.now()): FocusActivit
 
   const section = nextNewSection(state.learner, state.preferredChapter);
   if (section) {
-    const alreadyRead = state.log.events.some(
-      (e) => e.type === "read" && e.factIds?.some((id) => section.factIds.includes(id))
-    );
-    if (!alreadyRead) {
+    const kernel = pickKernel(section, state.learner);
+    const unseen = kernel.factId ? !(state.learner.seenFacts?.[kernel.factId] > 0) : true;
+    if (unseen) {
       decide(state, now, "Read the next book section", [`ch.${section.chapter} ${section.title}`], "read");
-      return readAct(section, false);
+      return readAct(section, false, kernel);
     }
     const cid =
       section.conceptIds.find((id) => (state.learner.concepts[id]?.exposures ?? 0) === 0) ?? section.conceptIds[0];
@@ -244,7 +244,7 @@ function adapt(
     const section =
       curr.sections.find((s) => s.conceptIds.includes(cid ?? "")) ?? nextNewSection(state.learner) ?? curr.sections[0];
     decide(state, now, "Repeated error → shortened re-reading of this section", [signal], "read");
-    return readAct(section, true);
+    return readAct(section, true, pickKernel(section, state.learner));
   }
   if (signal === "confidence-mismatch") {
     const tenMinAgo = now - 10 * 60 * 1000;
@@ -266,7 +266,7 @@ function adapt(
   }
 
   const section = nextNewSection(state.learner) ?? curr.sections[0];
-  return readAct(section, true);
+  return readAct(section, true, pickKernel(section, state.learner));
 }
 
 function describeAdapt(s: AttentionSignal): string {
@@ -291,13 +291,47 @@ function describeAdapt(s: AttentionSignal): string {
   }
 }
 
-function readAct(section: BookSection, shortened: boolean): FocusActivity {
+function lastReadFacts(state: EngineState): string[] {
+  return [...state.log.events].reverse().find((e) => e.type === "read")?.factIds ?? [];
+}
+
+function pickKernel(section: BookSection, learner: LearnerModel): BookSection["reading"][number] {
+  const seen = learner.seenFacts ?? {};
+  return section.reading.find((r) => r.factId && !(seen[r.factId] > 0)) ?? section.reading[0];
+}
+
+function kernelUnit(section: BookSection, kernel: BookSection["reading"][number], shortened: boolean): LearningUnit {
+  const base = sectionAsUnit(section);
+  const cid = kernel.factId
+    ? loadCurriculum().factById[kernel.factId]?.conceptId
+    : section.conceptIds[0];
+  return {
+    ...base,
+    title: kernel.heading || section.title,
+    conceptIds: cid ? [cid] : section.conceptIds.slice(0, 1),
+    factIds: kernel.factId ? [kernel.factId] : section.factIds.slice(0, 1),
+    load: shortened ? 1 : base.load,
+    reading: [
+      {
+        heading: kernel.heading || section.title,
+        body: kernel.body,
+        sources: kernel.sources,
+        factId: kernel.factId,
+        hold: kernel.hold,
+      },
+    ],
+    comparisonTable: undefined,
+  };
+}
+
+function readAct(section: BookSection, shortened: boolean, kernel: BookSection["reading"][number]): FocusActivity {
   return {
     kind: "read",
-    unit: sectionAsUnit(section),
+    unit: kernelUnit(section, kernel, shortened),
     section,
     shortened,
-    speech: readSpeech(section, shortened),
+    kernel,
+    speech: readSpeech(section, kernel),
   };
 }
 
@@ -318,9 +352,21 @@ function pickItem(
   curr: ReturnType<typeof loadCurriculum>,
   conceptId: string,
   state: EngineState,
-  opts: { preferProduction?: boolean; preferMcq?: boolean; avoidId?: string; typeBias?: PracticeItem["type"][] }
+  opts: {
+    preferProduction?: boolean;
+    preferMcq?: boolean;
+    avoidId?: string;
+    typeBias?: PracticeItem["type"][];
+    factIds?: string[];
+  }
 ): PracticeItem {
   let pool = curr.items.filter((i) => i.conceptIds.includes(conceptId));
+  if (opts.factIds?.length) {
+    const hit = pool.filter((i) => i.factIds.some((id) => opts.factIds!.includes(id)));
+    const mcqHit = hit.filter((i) => i.type === "mcq" && i.options?.length === 4);
+    if (mcqHit.length) pool = mcqHit;
+    else if (hit.length && !opts.preferMcq) pool = hit;
+  }
   if (opts.typeBias?.length) {
     const biased = pool.filter((i) => opts.typeBias!.includes(i.type));
     if (biased.length) pool = biased;
@@ -348,45 +394,12 @@ function pickItem(
   return chosen ?? curr.items[0];
 }
 
-function readSpeech(section: BookSection, shortened: boolean): SpeechAct[] {
-  const blocks = shortened ? section.reading.slice(0, 1) : section.reading;
-  const acts: SpeechAct[] = [
-    {
-      kind: "narrate",
-      text: `Chapter ${section.chapter}. ${section.chapterTitle}. ${section.title}.`,
-      interruptible: true,
-    },
-  ];
-  if (section.lede && !shortened) {
-    acts.push({ kind: "narrate", text: section.lede, interruptible: true });
-  }
-  const table = !shortened ? section.comparisonTable : undefined;
-  if (table) {
-    acts.push({
-      kind: "narrate",
-      text: `Comparison. ${table.caption}. Columns: ${table.headers.join(", ")}.`,
-      interruptible: true,
-    });
-    for (const row of table.rows) {
-      acts.push({
-        kind: "narrate",
-        text: row.map((cell, i) => `${table.headers[i] ?? "item"}: ${cell}`).join(". "),
-        interruptible: true,
-      });
-    }
-  }
-  for (const block of blocks) {
-    if (block.heading) acts.push({ kind: "narrate", text: block.heading, interruptible: true });
-    for (const para of block.body.split(/\n\n+/)) {
-      const text = para.trim();
-      if (text) acts.push({ kind: "narrate", text, interruptible: true });
-    }
-  }
-  if (!shortened) {
-    for (const trap of section.traps) {
-      acts.push({ kind: "narrate", text: `Exam trap. ${trap.title}. ${trap.body}`, interruptible: true });
-    }
-  }
+function readSpeech(section: BookSection, kernel: BookSection["reading"][number]): SpeechAct[] {
+  const hold = kernel.hold || section.lede || "";
+  const acts: SpeechAct[] = [];
+  if (hold) acts.push({ kind: "narrate", text: hold, interruptible: true });
+  const body = kernel.body.trim();
+  if (body) acts.push({ kind: "narrate", text: body, interruptible: true });
   return acts;
 }
 
@@ -402,6 +415,9 @@ function debriefSpeech(r: DebriefReport): SpeechAct[] {
 
 export function markRead(state: EngineState, unit: LearningUnit, now = Date.now()): EngineState {
   let learner = state.learner;
+  const seenFacts = { ...learner.seenFacts };
+  for (const id of unit.factIds) seenFacts[id] = now;
+  learner = { ...learner, seenFacts };
   for (const id of unit.conceptIds) {
     learner = applyExposure(learner, id, now);
     const st = learner.concepts[id];

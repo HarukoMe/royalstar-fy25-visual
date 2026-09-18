@@ -1,6 +1,59 @@
 import type { AuthoredFact, BookTrap, ChapterId, ReadingRole } from "../engine/types";
 import { CHAPTER_META } from "./facts";
 
+/** Exam-critical latches. Phrasing is a hold *about* the sourced claim, not a restatement of the paragraph. */
+const FACT_HOLDS: Record<string, string> = {
+  "m-compulsory":
+    "The specimen exception is a SORN to the DVLA. A garage or a private driveway is not that exception.",
+  "m-sorn-exam":
+    "The specimen exception is a SORN to the DVLA. A garage or a private driveway is not that exception.",
+  "m-four-levels":
+    "The exam lives on the ladder: RTA only, TPO, TPFT, comprehensive. Injury is unlimited at every rung; third-party property damage is not.",
+  "m-rta-tppd":
+    "Injury is unlimited. Third-party property damage on RTA only is not — private car is £1.2 million.",
+  "m-tpo-extras":
+    "TPO is not RTA-only. The usual extras are off-road, territorial limits, and £20 million TPPD for private cars.",
+  "m-tpft":
+    "TPFT adds fire and theft of the insured car. It still does not pay accidental damage to that car.",
+  "m-comp":
+    "Comprehensive is the step that adds accidental and malicious damage to the insured car.",
+  "h-pas-nature":
+    "Personal accident pays a stated benefit on a contingency. That is not reimbursement of treatment.",
+  "h-not-indemnity":
+    "Personal accident pays a stated benefit on a contingency. That is not reimbursement of treatment.",
+  "h-benefit-not-indemnity":
+    "Personal accident pays a stated benefit on a contingency. That is not reimbursement of treatment.",
+  "pe-mdw":
+    "Business interruption usually will not start without a valid material-damage claim. The building cover and the trading cover are different questions.",
+  "pe-bi-dims":
+    "The indemnity period is how long BI reimburses the claim. It is not ‘until renewal’.",
+  "l-el-comp":
+    "Ask three questions: who was hurt, was there property damage, and does the policy fire when the injury is caused or when the claim is made.",
+  "l-el-injury-only":
+    "Who was hurt? An employee at work is employers’ liability. EL does not pay property claims.",
+  "l-el-rsi":
+    "Who was hurt? A secretary’s RSI from working conditions is EL, not public liability or legal expenses.",
+  "l-pl":
+    "Who was hurt? A guest or member of the public is public liability. An employee at work is not.",
+  "l-el-min-limit":
+    "£5 million is the statutory EL floor. Insurers have written £10 million in practice. That is not public liability’s usual occurrence limit.",
+  "l-pl-exclusions":
+    "Public liability is an open policy. The exclusions send the claim to someone else’s class.",
+  "l-el-occurrence":
+    "When does the policy fire? EL cares when the injury was caused, not when someone later notifies.",
+  "l-claims-made":
+    "When does the policy fire? Claims-made cares when the claim is made, not when the injury was caused.",
+  "l-pi-claims":
+    "When does the policy fire? Professional indemnity is always claims-made.",
+  "l-ew":
+    "The buyer paid for extra time after the maker’s guarantee. That is not products liability.",
+  "l-ew-term":
+    "The buyer paid for extra time after the maker’s guarantee. That is not products liability.",
+  "l-products":
+    "Products is injury or damage from goods supplied. It is not the buyer’s extended warranty.",
+};
+
+
 export const ROLE_LABEL: Record<ReadingRole, string> = {
   open: "Open",
   fact: "Fact",
@@ -165,6 +218,40 @@ export function comparisonForSection(
 
 export function chapterHold(chapter: ChapterId): string {
   return CHAPTER_META[chapter].hold;
+}
+
+function kernels(claim: string): string[] {
+  const out: string[] = [];
+  const re = /\[\[(.+?)\]\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(claim))) out.push(m[1]);
+  return out;
+}
+
+/** One retainable latch about the fact — not a dump of the Key Facts paragraph. */
+export function holdForFact(fact: AuthoredFact, titleByConcept: Record<string, string>): string {
+  if (FACT_HOLDS[fact.id]) return FACT_HOLDS[fact.id];
+  const others = (fact.confusedWith ?? []).map((id) => shortName(id, titleByConcept[id] ?? id));
+  if (fact.kind === "distinction") {
+    return others.length
+      ? `Hold the difference: ${fact.title} is not ${others.join(" / ")}.`
+      : "Hold the difference this card is for. The sourced line is the latch.";
+  }
+  if (fact.kind === "exclusion") {
+    return others.length
+      ? `This is an exclusion. The exam will offer ${others.join(" / ")} instead.`
+      : "This is an exclusion — usually someone else’s class.";
+  }
+  if (fact.kind === "limit") {
+    const k = kernels(fact.claim)[0];
+    return k
+      ? `One figure to keep: ${k}. Neighbouring classes use other numbers.`
+      : CHAPTER_META[fact.chapter].hold;
+  }
+  if (others.length) {
+    return `Easy mix-up with ${others.join(" / ")}. Keep this card on its own.`;
+  }
+  return CHAPTER_META[fact.chapter].hold;
 }
 
 export function seedTraps(chapter: ChapterId, indexInChapter: number): BookTrap[] {
