@@ -11,9 +11,9 @@ import {
 } from "../src/engine/learner";
 import { noteAnswer, emptyAttention } from "../src/engine/attention";
 import { scheduleAfterRetrieval } from "../src/engine/scheduler";
-import { beginGrade, commitGrade, grade, markRead, nextActivity, signal, startSession } from "../src/engine/session";
+import { beginGrade, commitGrade, endSession, grade, markRead, nextActivity, signal, startSession } from "../src/engine/session";
 import { tutorExplain } from "../src/engine/tutor";
-import { startExam } from "../src/engine/exam";
+import { finishExam, startExam } from "../src/engine/exam";
 import { shuffleMcq } from "../src/engine/shuffle";
 
 describe("curriculum integrity", () => {
@@ -52,7 +52,20 @@ describe("curriculum integrity", () => {
 describe("grading", () => {
   it("accepts sourced MCQ keys from the exam guide", () => {
     const item = loadCurriculum().items.find((i) => i.type === "mcq" && i.prompt.includes("must be insured unless"))!;
-    expect(grade(item, "D").success || grade(item, item.expected[0]).success).toBe(true);
+    expect(grade(item, "D").success).toBe(true);
+    expect(grade(item, item.expected[0]).success).toBe(true);
+  });
+
+  it("grades Focus-style option text, not the first letter of the option", () => {
+    const curr = loadCurriculum();
+    const mcqs = curr.items.filter((i) => i.type === "mcq" && i.options && i.correctIndex != null);
+    expect(mcqs.length).toBeGreaterThan(50);
+    for (const item of mcqs) {
+      const correctText = item.options![item.correctIndex!];
+      expect(grade(item, correctText).success, item.id).toBe(true);
+      const wrong = item.options!.find((_, i) => i !== item.correctIndex);
+      if (wrong && wrong !== correctText) expect(grade(item, wrong).success, item.id).toBe(false);
+    }
   });
 
   it("scores production by kernels, not full sentence match", () => {
@@ -167,6 +180,35 @@ describe("exam overlay", () => {
     expect(exam.questions.length).toBeGreaterThan(4);
     expect(exam.questions.every((q) => q.displayOptions.length === 4)).toBe(true);
   });
+
+  it("writes exam answers into question stats and MCQ counters", () => {
+    const exam = startExam(createLearner(), { mode: "mixed", n: 6 });
+    exam.answers = exam.questions.map((q) => q.displayCorrect);
+    const out = finishExam(createLearner(), exam);
+    expect(out.attempt.correct).toBe(exam.questions.length);
+    const first = exam.questions[0]!;
+    expect(out.learner.questionStats[first.item.id]?.correct).toBeGreaterThan(0);
+    const cid = first.item.conceptIds[0]!;
+    expect(out.learner.concepts[cid]?.mcqCorrect).toBeGreaterThan(0);
+    expect(out.learner.examReadiness["1.1"]).toBeGreaterThan(0);
+  });
+});
+
+describe("session close", () => {
+  it("commits a pending answer and stamps endedAt", () => {
+    let s = startSession(createLearner());
+    let a = nextActivity(s);
+    if (a.kind === "predict") {
+      s = beginGrade(s, a.item, "compulsory third party on public roads", 4000, false);
+    } else if (a.kind === "retrieve") {
+      const ans = a.item.options?.[a.item.correctIndex ?? 0] ?? a.item.expected[0] ?? "x";
+      s = beginGrade(s, a.item, ans, 4000, false);
+    }
+    expect(s.pending).toBeTruthy();
+    const ended = endSession(s, 3);
+    expect(ended.pending).toBeUndefined();
+    expect(ended.log.endedAt).toBeTruthy();
+  });
 });
 
 describe("breadth across sessions", () => {
@@ -210,5 +252,34 @@ describe("mcq shuffle", () => {
     const sh = shuffleMcq(["A right", "B", "C", "D"], 0, () => 0.99);
     expect(sh.options).toHaveLength(4);
     expect(sh.options[sh.correctIndex]).toBe("A right");
+  });
+});
+
+describe("progress backup", () => {
+  it("round-trips a learner through export/import", async () => {
+    const mem = new Map<string, string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        mem.set(k, v);
+      },
+      removeItem: (k: string) => {
+        mem.delete(k);
+      },
+      clear: () => mem.clear(),
+      key: () => null,
+      length: 0,
+    };
+    const storage = await import("../src/storage");
+    const model = createLearner();
+    model.sessionCount = 3;
+    storage.saveLearner(model);
+    const bundle = storage.exportProgress();
+    storage.resetLearner();
+    expect(storage.loadLearner().sessionCount).toBe(0);
+    const r = storage.importProgress(bundle);
+    expect(r.ok).toBe(true);
+    expect(storage.loadLearner().sessionCount).toBe(3);
   });
 });

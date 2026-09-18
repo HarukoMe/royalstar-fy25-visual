@@ -308,7 +308,7 @@ export const behaviorNarrative = (rows: LedgerTransaction[], cycles: PaydayCycle
   const worsening = (closings.at(-1) ?? 0) < (closings[0] ?? 0);
   const lines: string[] = [];
   lines.push(
-    `From March through August you were paid B$${salaryTotal(rows).toFixed(2)} by Royal Star. Merchant spending was B$${economicSpending(rows).toFixed(2)}. That is not a budgeting vibe. That is the paycheck being spent.`
+    `From March through August you were paid B$${salaryTotal(rows).toFixed(2)} in salary. Merchant spending was B$${economicSpending(rows).toFixed(2)}. That is not a budgeting vibe. That is the paycheck being spent.`
   );
   if (first && last) {
     lines.push(

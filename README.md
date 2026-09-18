@@ -8,7 +8,16 @@ This repository holds three separate apps. They do not share a runtime, types, o
 | **Soundings** | `apps/soundings` | Private personal financial control room |
 | **Plate Room** | `apps/plate-room` | Cinematic FY2025 reading of RoyalStar Assurance’s audited statements |
 
-## Run
+## Study IF2 in a browser (no install)
+
+IF2 Conduct is a static web app. Progress is stored in **this browser’s localStorage** (nothing to install, no admin rights).
+
+- **Live:** https://harukome.github.io/royalstar-fy25-visual/
+- If that 404s, GitHub → this repo → **Settings → Pages** → Source **GitHub Actions**, then wait a minute and refresh.
+
+Work computer: open that URL in Chrome/Edge. You can bookmark it. Leave the tab open if you like.
+
+## Run locally
 
 ```bash
 npm install
@@ -20,7 +29,7 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Open the printed URL. Use **Focus** to study. The atlas outside the session shows gaps, mix-ups, due retrievals and a separate exam-readiness overlay — not a single percentage of “done”.
+Use **Focus** to study. The atlas outside the session shows gaps, mix-ups, due retrievals and a separate exam-readiness overlay — not a single percentage of “done”.
 
 Course content is taken from the supplied IF2 syllabus, examination guide, 2026 key facts (chs 1–6) and the chapter 1 study-text extract. Pedagogy is in `apps/if2/docs/learning-science.md`.
 
@@ -28,11 +37,13 @@ CII materials remain copyright of the Chartered Insurance Institute and are used
 
 ### Soundings
 
-Statements stay off public routes. The app ships a sanitized ledger reconstructed from March–August 2026 Scotiabank Electronic Access statements. Account numbers and card numbers are stripped.
+Statements stay off public routes. The committed ledger is sanitized: legal names, ATM terminal IDs, and street-level locations are replaced with tokens. Account numbers and card numbers are stripped.
 
 Planning date defaults to 15 September 2026. The last actual snapshot is 31 August 2026 (B$26.91). Forward paycheck used is B$1,379.10 after the B$369 deduction. Protected savings floor is B$100.
 
-Mom / rent / groceries remaining balances are unresolved until you type them. The system will not invent those amounts.
+Mom / rent / groceries remaining balances are unresolved until you type them. The October-flight toggle is a scenario, not an untyped debt. Log 1–15 September activity on the Command screen so assumed cash is not stuck on 31 August.
+
+If this repository is public, make it private: git history still contains older unredacted extracts.
 
 ### Plate Room
 

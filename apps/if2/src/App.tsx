@@ -3,8 +3,8 @@ import { Atlas } from "./ui/Atlas";
 import { Debrief } from "./ui/Debrief";
 import { ExamPractice } from "./ui/ExamPractice";
 import { Focus } from "./ui/Focus";
-import { buildDebrief, startSession, type DebriefReport, type EngineState } from "./engine/session";
-import { loadLearner, resetLearner, saveLearner } from "./storage";
+import { buildDebrief, endSession, startSession, type DebriefReport, type EngineState } from "./engine/session";
+import { loadLearner, resetLearner, saveLearner, saveSession } from "./storage";
 import "./styles.css";
 
 export function App() {
@@ -31,11 +31,11 @@ export function App() {
               className="ghost"
               onClick={() => {
                 if (!engine) return;
-                const r = buildDebrief(engine);
-                const ended = { ...engine, log: { ...engine.log, endedAt: Date.now() } };
+                const ended = endSession(engine);
                 saveLearner(ended.learner);
+                saveSession(ended.log);
                 setLearner(ended.learner);
-                setReport(r);
+                setReport(buildDebrief(ended));
                 setMode("debrief");
               }}
             >
@@ -64,6 +64,7 @@ export function App() {
             resetLearner();
             setLearner(loadLearner());
           }}
+          onImported={() => setLearner(loadLearner())}
         />
       )}
       {mode === "exam" && (

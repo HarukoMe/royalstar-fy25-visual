@@ -3,6 +3,7 @@ import {
   categoryAgg,
   currentPosition,
   defaultPlanning,
+  hydratePlanning,
   evaluatePurchase,
   buildForecast,
   makeLedger,
@@ -32,9 +33,9 @@ type View = "command" | "history" | "debt" | "recurring" | "forecast" | "ledger"
 
 const loadPlanning = (): PlanningState => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("soundings.planning.v1");
     if (!raw) return defaultPlanning();
-    return { ...defaultPlanning(), ...JSON.parse(raw) };
+    return hydratePlanning(JSON.parse(raw));
   } catch {
     return defaultPlanning();
   }
@@ -106,6 +107,10 @@ export const App = () => {
   const [filter, setFilter] = useState<{ month?: string; category?: string; merchant?: string; date?: string }>({});
   const [ruleMatch, setRuleMatch] = useState("");
   const [ruleCat, setRuleCat] = useState("Dining");
+  const [gapDate, setGapDate] = useState("2026-09-15");
+  const [gapAmt, setGapAmt] = useState("");
+  const [gapDir, setGapDir] = useState<"in" | "out">("out");
+  const [gapNote, setGapNote] = useState("");
 
   const ledger = useMemo(() => makeLedger(rules), [rules]);
   const pos = useMemo(() => currentPosition(planning), [planning]);
@@ -179,6 +184,79 @@ export const App = () => {
           </div>
         </div>
 
+        <form
+          className="controls"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const amount = Number(gapAmt);
+            if (!gapAmt || !Number.isFinite(amount) || amount <= 0) return;
+            if (gapDate < "2026-09-01" || gapDate > planning.asOfDate) return;
+            setPlanning((p) => ({
+              ...p,
+              gapEntries: [
+                ...(p.gapEntries ?? []),
+                {
+                  id: `gap-${Date.now()}`,
+                  date: gapDate,
+                  amount,
+                  direction: gapDir,
+                  note: gapNote.trim() || "September activity",
+                },
+              ],
+            }));
+            setGapAmt("");
+            setGapNote("");
+          }}
+        >
+          <label>
+            Gap date
+            <input type="date" min="2026-09-01" max={planning.asOfDate} value={gapDate} onChange={(e) => setGapDate(e.target.value)} />
+          </label>
+          <label>
+            Amount
+            <input type="number" step="0.01" min="0" placeholder="B$" value={gapAmt} onChange={(e) => setGapAmt(e.target.value)} />
+          </label>
+          <label>
+            Direction
+            <select value={gapDir} onChange={(e) => setGapDir(e.target.value as "in" | "out")}>
+              <option value="out">Spent</option>
+              <option value="in">Received</option>
+            </select>
+          </label>
+          <label>
+            Note
+            <input value={gapNote} onChange={(e) => setGapNote(e.target.value)} placeholder="What happened 1–15 Sep" />
+          </label>
+          <button type="submit">Log September gap</button>
+        </form>
+        {(planning.gapEntries ?? []).length > 0 && (
+          <div className="lag">
+            <div className="tag">GAP LOG</div>
+            <div>
+              {(planning.gapEntries ?? []).map((g) => (
+                <div key={g.id} className="subline">
+                  {g.date} · {g.direction === "out" ? "−" : "+"}
+                  {money(g.amount)} · {g.note}{" "}
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() =>
+                      setPlanning((p) => ({ ...p, gapEntries: (p.gapEntries ?? []).filter((x) => x.id !== g.id) }))
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {planning.currentBalanceOverride !== null
+                ? "A typed current balance already includes whatever you logged here."
+                : `Assumed cash now includes ${money(
+                    (planning.gapEntries ?? []).reduce((s, g) => s + (g.direction === "in" ? g.amount : -g.amount), 0)
+                  )} of September activity.`}
+            </div>
+          </div>
+        )}
+
         <div className="controls">
           <label>
             Payday posted?
@@ -214,7 +292,7 @@ export const App = () => {
                   ...planning,
                   octoberFlightMomFronts: on,
                   obligations: planning.obligations.map((o) =>
-                    o.id === "october-flight" ? { ...o, remaining: on ? 330 : null } : o
+                    o.id === "october-flight" ? { ...o, remaining: on ? planning.octoberFlightAmount : 0 } : o
                   ),
                 });
               }}
@@ -239,11 +317,6 @@ export const App = () => {
                     <i className="knot" />
                     <span>Already spoken for</span>
                     <b className="amt">{money(pos.spokenForKnownTotal)}</b>
-                  </div>
-                  <div className="spoke-row">
-                    <i className="knot" />
-                    <span>Protected savings</span>
-                    <b className="amt">{money(pos.protected)}</b>
                   </div>
                   <div className="spoke-row">
                     <i className="knot" />
@@ -841,7 +914,7 @@ export const App = () => {
                   {filtered.map((t) => (
                     <tr key={t.id}>
                       <td>{t.date}</td>
-                      <td title={t.originalDescription}>{t.merchant}</td>
+                      <td>{t.merchant}</td>
                       <td>{t.category}</td>
                       <td>{t.flowKind}</td>
                       <td>{money(t.signedAmount)}</td>
@@ -856,8 +929,7 @@ export const App = () => {
         )}
       </main>
       <footer className="footnote">
-        Soundings keeps original descriptions in the ledger. Account numbers, card numbers, and addresses are not shown.
-        No analytics. Statements are not hosted on a public route. Unresolved debts are visible on purpose.
+        Soundings shows cleaned merchants, not original bank text. Account numbers, cards, ATM IDs, and legal names are stripped from the committed ledger. Unresolved debts are visible on purpose. Git history of a public clone may still contain older extracts — keep the repository private.
       </footer>
     </div>
   );

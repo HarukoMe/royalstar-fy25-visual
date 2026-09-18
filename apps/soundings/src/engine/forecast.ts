@@ -62,8 +62,9 @@ export const buildForecast = (state: PlanningState, ledger: LedgerTransaction[])
   if (state.freezeDiscretionaryDays > 0) {
     cash = round2(cash + Math.min(avgDailyDisc, 12) * state.freezeDiscretionaryDays * 0.25);
   }
-  if (state.saveInsteadOf100 > state.protectedSavingsTarget) {
-    cash = round2(cash - (state.saveInsteadOf100 - state.protectedSavingsTarget));
+  const saveTarget = state.saveInsteadOf100 ?? state.protectedSavingsTarget;
+  if (saveTarget > state.protectedSavingsTarget) {
+    cash = round2(cash - (saveTarget - state.protectedSavingsTarget));
   }
   if (state.payAllFamilyNow) {
     const typed = state.obligations.filter((o) => o.kind === "family_debt" && o.remaining);
@@ -81,15 +82,12 @@ export const buildForecast = (state: PlanningState, ledger: LedgerTransaction[])
   });
 
   const allocation = [
-    { label: "Protected savings", amount: state.saveInsteadOf100 || state.protectedSavingsTarget },
+    { label: "Protected savings", amount: saveTarget },
     { label: "Groceries cap", amount: 160 },
     { label: "Phone", amount: 40 },
     { label: "Fuel", amount: 55 },
     { label: "Fees", amount: 8.8 },
   ];
-  if (state.octoberFlightMomFronts && nextPay >= "2026-10-01") {
-    allocation.unshift({ label: "Mom — October flight", amount: state.octoberFlightAmount });
-  }
   const typedNow = state.obligations.filter((o) => o.remaining && o.remaining > 0);
   for (const o of typedNow) allocation.unshift({ label: o.name, amount: o.remaining as number });
 
@@ -116,7 +114,7 @@ export const buildForecast = (state: PlanningState, ledger: LedgerTransaction[])
     points,
     beforeNextPayday,
     afterObligations,
-    expectedSavings: state.saveInsteadOf100 || state.protectedSavingsTarget,
+    expectedSavings: saveTarget,
     outstandingTypedDebt,
     discretionaryRemaining: round2(Math.max(afterObligations, 0)),
     nextPayAllocation: allocation,

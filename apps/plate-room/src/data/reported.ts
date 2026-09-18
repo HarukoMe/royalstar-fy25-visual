@@ -787,6 +787,13 @@ export const reported = build({
     role: 'investment',
     citation: N5,
   },
+  termDepositsAccruedInterest: {
+    value: 150_211,
+    prior: 174_756,
+    label: 'Accrued interest on term deposits',
+    role: 'investment',
+    citation: N5,
+  },
   premiumsReceivableGross: {
     value: 17_151_729,
     prior: 12_712_835,

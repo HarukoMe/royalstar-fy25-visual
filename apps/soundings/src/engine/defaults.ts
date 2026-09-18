@@ -32,7 +32,7 @@ export const defaultObligations = (): ManualObligation[] => [
     originalAmount: null,
     due: null,
     notes:
-      "No labelled rent debit exists on Scotia Everyday. Possible related: payday transfers to Chrystal Bain (including B$300 on 15 May). Amount currently owed is not reconstructable. Enter it.",
+      "No labelled rent debit exists on Scotia Everyday. Possible related: payday transfers to a person (including B$300 on 15 May). Amount currently owed is not reconstructable. Enter it.",
     source: "inferred_unresolved",
     priority: 2,
   },
@@ -52,7 +52,7 @@ export const defaultObligations = (): ManualObligation[] => [
     id: "october-flight",
     name: "October flight (if Mom fronts)",
     kind: "travel",
-    remaining: null,
+    remaining: 0,
     originalAmount: OCTOBER_FLIGHT,
     due: "2026-10-15",
     notes: "Scenario: Mom fronts B$330, you repay from the following paycheck. Off by default until you toggle it.",
@@ -80,7 +80,29 @@ export const defaultPlanning = (): PlanningState => ({
   payAllFamilyNow: false,
   freezeDiscretionaryDays: 0,
   obligations: defaultObligations(),
+  gapEntries: [],
 });
 
-export const STORAGE_KEY = "soundings.planning.v1";
+export const STORAGE_KEY = "soundings.planning.v2";
 export const RULES_KEY = "soundings.rules.v1";
+
+export const hydratePlanning = (raw: Partial<PlanningState> & { obligations?: PlanningState["obligations"] }): PlanningState => {
+  const base = defaultPlanning();
+  const savedObs = raw.obligations ?? [];
+  const obligations = base.obligations.map((o) => {
+    const saved = savedObs.find((x) => x.id === o.id);
+    if (!saved) return o;
+    const merged = { ...o, ...saved };
+    if (o.id === "october-flight" && merged.remaining === null && !raw.octoberFlightMomFronts) {
+      merged.remaining = 0;
+    }
+    return merged;
+  });
+  const extras = savedObs.filter((o) => !base.obligations.some((b) => b.id === o.id));
+  return {
+    ...base,
+    ...raw,
+    obligations: [...obligations, ...extras],
+    gapEntries: raw.gapEntries ?? [],
+  };
+};
