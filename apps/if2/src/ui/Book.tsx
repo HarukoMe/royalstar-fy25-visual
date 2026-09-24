@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { COMPANION, type CompanionBlock } from "../curriculum/companion";
+import { loadCurriculum } from "../curriculum/compile";
+import type { BookSection } from "../engine/types";
 import { loadMarks, saveMarks, type BookMark } from "../storage";
 
 function paint(text: string, marks: BookMark[]) {
@@ -56,7 +58,18 @@ function blockBlob(b: CompanionBlock) {
   return [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])].join(" ").toLowerCase();
 }
 
+function sectionBlob(s: BookSection) {
+  return [
+    s.title,
+    ...s.reading.flatMap((r) => [r.heading ?? "", r.body, ...(r.bullets ?? [])]),
+    ...(s.comparisonTable ? [s.comparisonTable.caption, ...s.comparisonTable.headers, ...s.comparisonTable.rows.flat()] : []),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 export function Book({ openAt }: { openAt?: { chapter: number; n: number } | null }) {
+  const curr = useMemo(() => loadCurriculum(), []);
   const [marks, setMarks] = useState<BookMark[]>(() => loadMarks());
   const [query, setQuery] = useState("");
   const [here, setHere] = useState(0);
@@ -70,10 +83,14 @@ export function Book({ openAt }: { openAt?: { chapter: number; n: number } | nul
 
   const q = query.trim().toLowerCase();
   const chapters = COMPANION.map((c) => {
-    if (!q) return c;
-    if (c.title.toLowerCase().includes(q)) return c;
-    return { ...c, blocks: c.blocks.filter((b) => blockBlob(b).includes(q)) };
-  }).filter((c) => c.blocks.length > 0);
+    const sourcedAll = curr.sections.filter((s) => s.chapter === c.chapter);
+    if (!q || c.title.toLowerCase().includes(q)) return { ...c, sourced: sourcedAll };
+    return {
+      ...c,
+      blocks: c.blocks.filter((b) => blockBlob(b).includes(q)),
+      sourced: sourcedAll.filter((s) => sectionBlob(s).includes(q)),
+    };
+  }).filter((c) => c.blocks.length > 0 || c.sourced.length > 0);
 
   useEffect(() => {
     const nodes = [...document.querySelectorAll<HTMLElement>(".book-ch")];
@@ -167,12 +184,16 @@ export function Book({ openAt }: { openAt?: { chapter: number; n: number } | nul
     });
   }
 
-  const words = COMPANION.flatMap((c) =>
-    c.blocks.flatMap((b) => [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])
-  )
-    .join(" ")
-    .split(/\s+/)
-    .filter(Boolean).length;
+  const words =
+    COMPANION.flatMap((c) => c.blocks.flatMap((b) => [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])]))
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean).length +
+    curr.sections
+      .flatMap((s) => s.reading.flatMap((r) => [r.body, ...(r.bullets ?? [])]))
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean).length;
 
   return (
     <div className="book">
@@ -233,8 +254,9 @@ export function Book({ openAt }: { openAt?: { chapter: number; n: number } | nul
         <p className="kicker">IF2 2026 · 100 questions · 2 hours · English law</p>
         <h2>The whole paper, in one read.</h2>
         <p className="lede">
-          About {words.toLocaleString()} words. Thirteen chapters, in the study text’s own order. Select a sentence to
-          highlight it. Add a note. Both stay in this browser.
+          About {words.toLocaleString()} words. Thirteen chapters, in the study text’s own order. Key facts for chapters
+          1–6 are in the same chapter, after the notes. Select a sentence to highlight it. Add a note. Both stay in this
+          browser.
         </p>
         <table className="table lesson-table syllabus">
           <caption>How the 100 questions are split (syllabus, ±2)</caption>
@@ -307,6 +329,10 @@ export function Book({ openAt }: { openAt?: { chapter: number; n: number } | nul
                 <Notes sectionId={b.id} marks={marks} onChange={setMarks} />
               </div>
             ))}
+            {c.sourced.length > 0 && <p className="kicker facts-label">Key facts</p>}
+            {c.sourced.map((s) => (
+              <Sourced key={s.id} section={s} marks={marks} onChange={setMarks} />
+            ))}
           </section>
         ))}
         {q && chapters.length === 0 && <p className="meta">Nothing in the book contains “{query.trim()}”.</p>}
@@ -338,6 +364,61 @@ export function Book({ openAt }: { openAt?: { chapter: number; n: number } | nul
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Sourced({
+  section,
+  marks,
+  onChange,
+}: {
+  section: BookSection;
+  marks: BookMark[];
+  onChange: (m: BookMark[]) => void;
+}) {
+  const locator = section.reading[0]?.sources[0]?.locator;
+  return (
+    <div className="book-note" id={section.id} data-sec={section.id}>
+      <h3>{section.title}</h3>
+      {section.reading.map((r, i) => (
+        <div key={`${section.id}-${i}`}>
+          {r.heading ? <h4>{r.heading}</h4> : null}
+          {r.body ? <Prose id={section.id} text={r.body} marks={marks} /> : null}
+          {r.bullets?.length ? (
+            <ul>
+              {r.bullets.map((b) => (
+                <li key={b.slice(0, 60)}>
+                  <Prose id={section.id} text={b} marks={marks} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ))}
+      {section.comparisonTable && (
+        <table className="table lesson-table">
+          <caption>{section.comparisonTable.caption}</caption>
+          <thead>
+            <tr>
+              {section.comparisonTable.headers.map((h) => (
+                <th key={h}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {section.comparisonTable.rows.map((row) => (
+              <tr key={row.join("|")}>
+                {row.map((cell) => (
+                  <td key={cell.slice(0, 24)}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {locator && <p className="source">{locator}</p>}
+      <Notes sectionId={section.id} marks={marks} onChange={onChange} />
     </div>
   );
 }
