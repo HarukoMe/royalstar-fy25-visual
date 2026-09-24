@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMPANION } from "../src/curriculum/companion";
 import { loadCurriculum } from "../src/curriculum/compile";
 import { runIntegrity } from "../src/engine/integrity";
 import { coverageOf } from "../src/engine/coverage";
@@ -35,6 +36,18 @@ import {
 import { tutorExplain } from "../src/engine/tutor";
 import { finishExam, startExam } from "../src/engine/exam";
 import { shuffleMcq } from "../src/engine/shuffle";
+
+describe("study book", () => {
+  it("covers all 13 chapters and is long enough to read", () => {
+    expect(COMPANION.map((c) => c.chapter)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    const words = COMPANION.flatMap((c) => c.blocks.flatMap((b) => [b.hold ?? "", ...b.paras])).join(" ").split(/\s+/).filter(Boolean);
+    expect(words.length).toBeGreaterThan(2200);
+    const { sections } = loadCurriculum();
+    expect(sections.length).toBeGreaterThan(80);
+    const sourced = sections.reduce((n, s) => n + s.reading.map((r) => r.body).join(" ").length, 0);
+    expect(sourced).toBeGreaterThan(40_000);
+  });
+});
 
 describe("curriculum integrity", () => {
   it("stays inside chapters 1–6 and LO 1.1", () => {

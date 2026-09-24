@@ -4,7 +4,7 @@ This repository holds three separate apps. They do not share a runtime, types, o
 
 | App | Path | What it is |
 | --- | --- | --- |
-| **IF2 Conduct** | `apps/if2` | CII IF2 2026 Chapters 1–6 (syllabus 1.1): read a section, hear it, then MCQs |
+| **IF2 Conduct** | `apps/if2` | CII IF2 2026 study companion: the whole paper in one scroll, plus cards and MCQs |
 | **Soundings** | `apps/soundings` | Private personal financial control room |
 | **Plate Room** | `apps/plate-room` | Cinematic FY2025 reading of RoyalStar Assurance’s audited statements |
 
@@ -29,7 +29,7 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Open the printed URL (or the GitHub Pages study URL). **Study** is the book first: one Key Facts heading at a time (the full sourced lesson — Key Facts 1–6, plus the chapter 1 study text where we have it), **Next** to keep reading, **Listen** if you want it spoken. **Check this** is optional — a question on that lesson when you are ready. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the card.
+Open the printed URL (or the GitHub Pages study URL). **Book** is the whole paper in one scroll: every key-facts heading for chapters 1–6, then original teaching for chapters 7–13 (underwriting, wordings, claims, data, customer service). Highlight and notes stay in this browser. **Cards** is one heading at a time if you want that instead. **Check this** is optional. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the card.
 
 If GitHub Pages is HTTPS and Kokoro is HTTP, the browser may block it. Leave Docker running on the home PC, then expose HTTPS and paste that URL under **Voice**:
 

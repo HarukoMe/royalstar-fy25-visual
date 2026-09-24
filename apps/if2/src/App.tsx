@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Atlas } from "./ui/Atlas";
+import { Book } from "./ui/Book";
 import { Debrief } from "./ui/Debrief";
 import { ExamPractice } from "./ui/ExamPractice";
 import { Focus } from "./ui/Focus";
@@ -9,7 +10,7 @@ import type { ChapterId } from "./engine/types";
 import "./styles.css";
 
 export function App() {
-  const [mode, setMode] = useState<"atlas" | "focus" | "debrief" | "exam">("focus");
+  const [mode, setMode] = useState<"book" | "atlas" | "focus" | "debrief" | "exam">("book");
   const [learner, setLearner] = useState(() => loadLearner());
   const [engine, setEngine] = useState<EngineState | null>(() => startSession(loadLearner()));
   const [report, setReport] = useState<DebriefReport | null>(null);
@@ -24,10 +25,22 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <h1 className="brand">
-          IF2 <span>1–6</span>
+          IF2 <span>2026</span>
         </h1>
-        {mode === "focus" ? (
-          <nav>
+        <nav>
+          <button className={mode === "book" ? "" : "ghost"} onClick={() => setMode("book")}>
+            Book
+          </button>
+          <button className={mode === "focus" ? "" : "ghost"} onClick={() => begin()}>
+            Cards
+          </button>
+          <button className={mode === "exam" ? "" : "ghost"} onClick={() => setMode("exam")}>
+            Exam
+          </button>
+          <button className={mode === "atlas" ? "" : "ghost"} onClick={() => setMode("atlas")}>
+            Map
+          </button>
+          {mode === "focus" && (
             <button
               className="ghost"
               onClick={() => {
@@ -40,22 +53,13 @@ export function App() {
                 setMode("debrief");
               }}
             >
-              End session
+              End
             </button>
-          </nav>
-        ) : (
-          <nav>
-            <button onClick={() => begin()}>Study</button>
-            <button className={mode === "exam" ? "" : "ghost"} onClick={() => setMode("exam")}>
-              Exam
-            </button>
-            <button className={mode === "atlas" ? "" : "ghost"} onClick={() => setMode("atlas")}>
-              Map
-            </button>
-          </nav>
-        )}
+          )}
+        </nav>
       </header>
-      {mode !== "focus" && <div className="pulse">{/* quiet chrome */}</div>}
+      {mode !== "focus" && mode !== "book" && <div className="pulse">{/* quiet chrome */}</div>}
+      {mode === "book" && <Book />}
       {mode === "atlas" && (
         <Atlas
           learner={learner}
