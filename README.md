@@ -29,7 +29,7 @@ npm run dev:plate-room   # Plate Room on :5175
 
 ### IF2 Conduct
 
-Open the printed URL (or the GitHub Pages study URL). **Book** is the whole paper in one scroll: every key-facts heading for chapters 1–6, then original teaching for chapters 7–13 (underwriting, wordings, claims, data, customer service). Highlight and notes stay in this browser. **Cards** is one heading at a time if you want that instead. **Check this** is optional. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running. Play / pause / resume are real audio, same words as the card.
+Open the printed URL (or the GitHub Pages study URL). **Book** is the paper: thirteen chapters in the study text’s own order, read straight through. Highlight and notes stay in this browser. **Exam** is the MCQ practice. **Map** is progress on chapters 1–6. Kokoro is on `http://127.0.0.1:8880`. Default voice is a British studio mix (`bf_isabella(2)+af_heart(1)`, `lang_code: b`). Leave that Docker container running.
 
 If GitHub Pages is HTTPS and Kokoro is HTTP, the browser may block it. Leave Docker running on the home PC, then expose HTTPS and paste that URL under **Voice**:
 

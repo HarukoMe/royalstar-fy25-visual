@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { COMPANION } from "../curriculum/companion";
-import { CHAPTER_META } from "../curriculum/facts";
-import { loadCurriculum } from "../curriculum/compile";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { COMPANION, type CompanionBlock } from "../curriculum/companion";
 import { loadMarks, saveMarks, type BookMark } from "../storage";
-import type { BookSection } from "../engine/types";
 
 function paint(text: string, marks: BookMark[]) {
   const quotes = [...new Set(marks.map((m) => m.quote).filter((q) => q && text.includes(q)))].sort(
@@ -55,18 +52,28 @@ function Prose({
   return <p className={className}>{paint(text, mine)}</p>;
 }
 
-export function Book() {
-  const curr = useMemo(() => loadCurriculum(), []);
+function blockBlob(b: CompanionBlock) {
+  return [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])].join(" ").toLowerCase();
+}
+
+export function Book({ openAt }: { openAt?: { chapter: number; n: number } | null }) {
   const [marks, setMarks] = useState<BookMark[]>(() => loadMarks());
   const [query, setQuery] = useState("");
-  const [only, setOnly] = useState<number | 0>(0);
   const [here, setHere] = useState(0);
   const [pop, setPop] = useState<{ x: number; y: number; sectionId: string; quote: string } | null>(null);
   const [draft, setDraft] = useState("");
+  const pending = useRef<number | null>(null);
 
   useEffect(() => {
     saveMarks(marks);
   }, [marks]);
+
+  const q = query.trim().toLowerCase();
+  const chapters = COMPANION.map((c) => {
+    if (!q) return c;
+    if (c.title.toLowerCase().includes(q)) return c;
+    return { ...c, blocks: c.blocks.filter((b) => blockBlob(b).includes(q)) };
+  }).filter((c) => c.blocks.length > 0);
 
   useEffect(() => {
     const nodes = [...document.querySelectorAll<HTMLElement>(".book-ch")];
@@ -84,7 +91,7 @@ export function Book() {
     );
     nodes.forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, [only, query]);
+  }, [query]);
 
   useEffect(() => {
     const rail = document.querySelector(".rail-list");
@@ -100,7 +107,21 @@ export function Book() {
     }
   }, [here]);
 
-  const q = query.trim().toLowerCase();
+  useEffect(() => {
+    if (!openAt) return;
+    pending.current = openAt.chapter;
+    setQuery("");
+    setHere(openAt.chapter);
+  }, [openAt]);
+
+  useEffect(() => {
+    if (q || pending.current == null) return;
+    const chapter = pending.current;
+    pending.current = null;
+    requestAnimationFrame(() => {
+      document.getElementById(`ch-${chapter}`)?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+  }, [openAt, q]);
 
   function grab(sectionId: string) {
     const sel = window.getSelection();
@@ -135,29 +156,23 @@ export function Book() {
   }
 
   function jump(n: number) {
-    setOnly(0);
     setHere(n);
+    if (q) {
+      pending.current = n;
+      setQuery("");
+      return;
+    }
     requestAnimationFrame(() => {
       document.getElementById(`ch-${n}`)?.scrollIntoView({ behavior: "instant", block: "start" });
     });
   }
 
-  const sourced = (chapter: number) =>
-    curr.sections.filter((s) => {
-      if (s.chapter !== chapter) return false;
-      if (!q) return true;
-      const blob = [s.title, ...s.reading.flatMap((r) => [r.body, ...(r.bullets ?? [])])].join(" ").toLowerCase();
-      return blob.includes(q);
-    });
-
-  const words =
-    COMPANION.flatMap((c) => c.blocks.flatMap((b) => [b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])).join(" ").split(/\s+/).length +
-    Math.round(
-      curr.sections.reduce(
-        (n, s) => n + s.reading.map((r) => `${r.body} ${(r.bullets ?? []).join(" ")}`).join(" ").length,
-        0
-      ) / 5
-    );
+  const words = COMPANION.flatMap((c) =>
+    c.blocks.flatMap((b) => [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])
+  )
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean).length;
 
   return (
     <div className="book">
@@ -175,7 +190,7 @@ export function Book() {
             className="ghost"
             aria-current={here === 0 ? "true" : undefined}
             onClick={() => {
-              setOnly(0);
+              setQuery("");
               setHere(0);
               window.scrollTo({ top: 0, behavior: "instant" });
             }}
@@ -207,17 +222,19 @@ export function Book() {
           )}
         </div>
       </aside>
-      <article className="book-page" onMouseUp={(ev) => {
-        const sec = (ev.target as HTMLElement).closest("[data-sec]");
-        if (!sec) return;
-        grab(sec.getAttribute("data-sec") || "");
-      }}>
+      <article
+        className="book-page"
+        onMouseUp={(ev) => {
+          const sec = (ev.target as HTMLElement).closest("[data-sec]");
+          if (!sec) return;
+          grab(sec.getAttribute("data-sec") || "");
+        }}
+      >
         <p className="kicker">IF2 2026 · 100 questions · 2 hours · English law</p>
         <h2>The whole paper, in one read.</h2>
         <p className="lede">
-          About {words.toLocaleString()} words. Each chapter follows the study text’s own sections. Where a key-facts
-          checklist sits underneath, it is the short list, after the chapter. Highlight any sentence. Add a note. It
-          stays in this browser.
+          About {words.toLocaleString()} words. Thirteen chapters, in the study text’s own order. Select a sentence to
+          highlight it. Add a note. Both stay in this browser.
         </p>
         <table className="table lesson-table syllabus">
           <caption>How the 100 questions are split (syllabus, ±2)</caption>
@@ -267,7 +284,7 @@ export function Book() {
           </tbody>
         </table>
 
-        {COMPANION.filter((c) => only === 0 || only === c.chapter).map((c) => (
+        {chapters.map((c) => (
           <section key={c.chapter} id={`ch-${c.chapter}`} className="book-ch">
             <p className="kicker">
               Chapter {c.chapter} · LO {c.lo} · {c.weight}
@@ -290,22 +307,16 @@ export function Book() {
                 <Notes sectionId={b.id} marks={marks} onChange={setMarks} />
               </div>
             ))}
-            {c.chapter <= 6 && sourced(c.chapter).length > 0 && (
-              <h3 className="kf-break">Key facts checklist</h3>
-            )}
-            {c.chapter <= 6 &&
-              sourced(c.chapter).map((s) => (
-                <Sourced key={s.id} section={s} marks={marks} onChange={setMarks} />
-              ))}
-            {c.chapter <= 6 && q && sourced(c.chapter).length === 0 && (
-              <p className="meta">No heading in this chapter contains “{query.trim()}”.</p>
-            )}
           </section>
         ))}
+        {q && chapters.length === 0 && <p className="meta">Nothing in the book contains “{query.trim()}”.</p>}
       </article>
       {pop && (
         <div className="mark-pop" style={{ left: Math.max(8, pop.x), top: pop.y }}>
-          <p>{pop.quote.slice(0, 140)}{pop.quote.length > 140 ? "…" : ""}</p>
+          <p>
+            {pop.quote.slice(0, 140)}
+            {pop.quote.length > 140 ? "…" : ""}
+          </p>
           <input
             value={draft}
             placeholder="Note (optional)"
@@ -328,66 +339,6 @@ export function Book() {
         </div>
       )}
     </div>
-  );
-}
-
-function Sourced({
-  section,
-  marks,
-  onChange,
-}: {
-  section: BookSection;
-  marks: BookMark[];
-  onChange: (m: BookMark[]) => void;
-}) {
-  const hold = section.reading.find((r) => r.hold)?.hold || section.lede || CHAPTER_META[section.chapter].hold;
-  return (
-    <section className="book-sec" id={section.id} data-sec={section.id}>
-      <p className="kicker">
-        {section.chapter}.{section.indexInChapter} · {section.chapterTitle}
-      </p>
-      <h3>{section.title}</h3>
-      <p className="hold">{hold}</p>
-      <div className="reading">
-        {section.reading.map((r, i) => (
-          <div key={`${section.id}-${i}`}>
-            {r.body ? <Prose id={section.id} text={r.body} marks={marks} /> : null}
-            {r.bullets?.length ? (
-              <ul>
-                {r.bullets.map((b) => (
-                  <li key={b.slice(0, 60)}>
-                    <Prose id={section.id} text={b} marks={marks} />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        ))}
-      </div>
-      {section.comparisonTable && (
-        <table className="table lesson-table">
-          <caption>{section.comparisonTable.caption}</caption>
-          <thead>
-            <tr>
-              {section.comparisonTable.headers.map((h) => (
-                <th key={h}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {section.comparisonTable.rows.map((row) => (
-              <tr key={row.join("|")}>
-                {row.map((cell) => (
-                  <td key={cell.slice(0, 24)}>{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <p className="source">{section.reading[0]?.sources[0]?.locator}</p>
-      <Notes sectionId={section.id} marks={marks} onChange={onChange} />
-    </section>
   );
 }
 
@@ -414,7 +365,12 @@ function Notes({
     <div className="notes">
       {notes.map((m) => (
         <p key={m.id}>
-          {m.quote && <em>“{m.quote.slice(0, 160)}{m.quote.length > 160 ? "…" : ""}”</em>}
+          {m.quote && (
+            <em>
+              “{m.quote.slice(0, 160)}
+              {m.quote.length > 160 ? "…" : ""}”
+            </em>
+          )}
           {m.note && <> — {m.note}</>}
           <button
             type="button"
@@ -429,17 +385,14 @@ function Notes({
         <div className="row">
           <input
             value={text}
-            placeholder="Your note on this heading"
+            placeholder="Your note on this section"
             onChange={(ev) => setText(ev.target.value)}
           />
           <button
             type="button"
             onClick={() => {
               if (!text.trim()) return;
-              onChange([
-                { id: `n-${Date.now()}`, sectionId, quote: "", note: text.trim(), color: "ink" },
-                ...marks,
-              ]);
+              onChange([{ id: `n-${Date.now()}`, sectionId, quote: "", note: text.trim(), color: "ink" }, ...marks]);
               setText("");
               setOpen(false);
             }}

@@ -330,15 +330,20 @@ button.quiet-check {
 }
 .book-page { width: 100%; }
 .book-page h2 { margin-top: 0.2rem; }
+.book-page .hold {
+  font-family: var(--type);
+  font-weight: 600;
+  font-style: normal;
+  font-size: 1.12rem;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+.book-page .book-note p { font-size: 1.12rem; line-height: 1.7; margin: 0 0 1rem; }
+.book-page .book-note ul { margin: 0 0 1.1rem; padding-left: 1.2rem; line-height: 1.65; }
 .book-ch { margin: 2.6rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--line); }
 .book-note, .book-sec { margin: 1.4rem 0 1.8rem; }
 .book-sec h3, .book-note h3 { font-family: var(--display); font-size: 1.35rem; margin: 0 0 0.6rem; }
-.kf-break {
-  margin: 2.2rem 0 0.2rem;
-  font-family: var(--display);
-  font-size: 1.15rem;
-  color: var(--muted);
-}
 .hl { background: #f3e2a1; padding: 0 0.1rem; }
 .hl.amber { background: #f0c9a0; }
 .mark-pop {

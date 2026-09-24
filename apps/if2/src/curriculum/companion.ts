@@ -21,7 +21,7 @@ export const COMPANION: CompanionChapter[] = [
     chapter: 1,
     title: "Motor insurance",
     lo: "1.1",
-    weight: "Study text sections A–C. The key-facts list under this chapter is the checklist, not the chapter.",
+    weight: "Study text sections A–C.",
     blocks: [
       {
         id: "s1a",
