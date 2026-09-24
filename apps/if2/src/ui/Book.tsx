@@ -60,12 +60,45 @@ export function Book() {
   const [marks, setMarks] = useState<BookMark[]>(() => loadMarks());
   const [query, setQuery] = useState("");
   const [only, setOnly] = useState<number | 0>(0);
+  const [here, setHere] = useState(0);
   const [pop, setPop] = useState<{ x: number; y: number; sectionId: string; quote: string } | null>(null);
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
     saveMarks(marks);
   }, [marks]);
+
+  useEffect(() => {
+    const nodes = [...document.querySelectorAll<HTMLElement>(".book-ch")];
+    if (!nodes.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const hit = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!hit) return;
+        const n = Number(hit.target.id.replace("ch-", ""));
+        if (n) setHere(n);
+      },
+      { rootMargin: "-12% 0px -72% 0px", threshold: 0 }
+    );
+    nodes.forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, [only, query]);
+
+  useEffect(() => {
+    const rail = document.querySelector(".rail-list");
+    const btn = rail?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!rail || !btn) return;
+    const railBox = rail.getBoundingClientRect();
+    const btnBox = btn.getBoundingClientRect();
+    if (btnBox.top < railBox.top || btnBox.bottom > railBox.bottom) {
+      rail.scrollTop += btnBox.top - railBox.top - 8;
+    }
+    if (btnBox.left < railBox.left || btnBox.right > railBox.right) {
+      rail.scrollLeft += btnBox.left - railBox.left - 8;
+    }
+  }, [here]);
 
   const q = query.trim().toLowerCase();
 
@@ -103,8 +136,9 @@ export function Book() {
 
   function jump(n: number) {
     setOnly(0);
+    setHere(n);
     requestAnimationFrame(() => {
-      document.getElementById(`ch-${n}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(`ch-${n}`)?.scrollIntoView({ behavior: "instant", block: "start" });
     });
   }
 
@@ -128,27 +162,50 @@ export function Book() {
   return (
     <div className="book">
       <aside className="book-rail">
-        <p className="kicker">The paper</p>
-        <button type="button" className={only === 0 ? "" : "ghost"} onClick={() => setOnly(0)}>
-          All
-        </button>
-        {COMPANION.map((c) => (
-          <button key={c.chapter} type="button" className="ghost" onClick={() => jump(c.chapter)}>
-            {c.chapter} {c.title}
+        <div className="rail-head">
+          <p className="kicker">Contents</p>
+          <label>
+            Find
+            <input value={query} onChange={(ev) => setQuery(ev.target.value)} placeholder="A word in the book" />
+          </label>
+        </div>
+        <nav className="rail-list" aria-label="Chapters">
+          <button
+            type="button"
+            className="ghost"
+            aria-current={here === 0 ? "true" : undefined}
+            onClick={() => {
+              setOnly(0);
+              setHere(0);
+              window.scrollTo({ top: 0, behavior: "instant" });
+            }}
+          >
+            <span className="rail-n">·</span>
+            <span>Overview</span>
           </button>
-        ))}
-        <label>
-          Find
-          <input value={query} onChange={(ev) => setQuery(ev.target.value)} placeholder="A word in the book" />
-        </label>
-        <p className="meta">
-          {marks.length} highlight{marks.length === 1 ? "" : "s"} on this browser.
-        </p>
-        {marks.length > 0 && (
-          <button type="button" className="ghost" onClick={() => setMarks([])}>
-            Clear highlights
-          </button>
-        )}
+          {COMPANION.map((c) => (
+            <button
+              key={c.chapter}
+              type="button"
+              className="ghost"
+              aria-current={here === c.chapter ? "true" : undefined}
+              onClick={() => jump(c.chapter)}
+            >
+              <span className="rail-n">{String(c.chapter).padStart(2, "0")}</span>
+              <span>{c.title}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="rail-foot">
+          <p className="meta">
+            {marks.length} highlight{marks.length === 1 ? "" : "s"}
+          </p>
+          {marks.length > 0 && (
+            <button type="button" className="ghost quiet-check" onClick={() => setMarks([])}>
+              Clear highlights
+            </button>
+          )}
+        </div>
       </aside>
       <article className="book-page" onMouseUp={(ev) => {
         const sec = (ev.target as HTMLElement).closest("[data-sec]");
@@ -162,7 +219,7 @@ export function Book() {
           are written out in full: services, material facts, the underwriting chain, wordings, claims, data, customers.
           That is where most of the marks sit. Highlight any sentence. Add a note. It stays in this browser.
         </p>
-        <table className="table lesson-table">
+        <table className="table lesson-table syllabus">
           <caption>How the 100 questions are split (syllabus, ±2)</caption>
           <thead>
             <tr>

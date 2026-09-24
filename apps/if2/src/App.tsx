@@ -28,16 +28,16 @@ export function App() {
           IF2 <span>2026</span>
         </h1>
         <nav>
-          <button className={mode === "book" ? "" : "ghost"} onClick={() => setMode("book")}>
+          <button aria-current={mode === "book" ? "page" : undefined} className={mode === "book" ? "" : "ghost"} onClick={() => setMode("book")}>
             Book
           </button>
-          <button className={mode === "focus" ? "" : "ghost"} onClick={() => begin()}>
+          <button aria-current={mode === "focus" ? "page" : undefined} className={mode === "focus" ? "" : "ghost"} onClick={() => begin()}>
             Cards
           </button>
-          <button className={mode === "exam" ? "" : "ghost"} onClick={() => setMode("exam")}>
+          <button aria-current={mode === "exam" ? "page" : undefined} className={mode === "exam" ? "" : "ghost"} onClick={() => setMode("exam")}>
             Exam
           </button>
-          <button className={mode === "atlas" ? "" : "ghost"} onClick={() => setMode("atlas")}>
+          <button aria-current={mode === "atlas" ? "page" : undefined} className={mode === "atlas" ? "" : "ghost"} onClick={() => setMode("atlas")}>
             Map
           </button>
           {mode === "focus" && (
