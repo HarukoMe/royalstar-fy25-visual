@@ -333,6 +333,12 @@ button.quiet-check {
 .book-ch { margin: 2.6rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--line); }
 .book-note, .book-sec { margin: 1.4rem 0 1.8rem; }
 .book-sec h3, .book-note h3 { font-family: var(--display); font-size: 1.35rem; margin: 0 0 0.6rem; }
+.kf-break {
+  margin: 2.2rem 0 0.2rem;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  color: var(--muted);
+}
 .hl { background: #f3e2a1; padding: 0 0.1rem; }
 .hl.amber { background: #f0c9a0; }
 .mark-pop {

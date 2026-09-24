@@ -215,9 +215,9 @@ export function Book() {
         <p className="kicker">IF2 2026 · 100 questions · 2 hours · English law</p>
         <h2>The whole paper, in one read.</h2>
         <p className="lede">
-          About {words.toLocaleString()} words. Chapters 1–6 run every key-facts heading, one after another. Chapters 7–13
-          are written out in full: services, material facts, the underwriting chain, wordings, claims, data, customers.
-          That is where most of the marks sit. Highlight any sentence. Add a note. It stays in this browser.
+          About {words.toLocaleString()} words. Each chapter follows the study text’s own sections. Where a key-facts
+          checklist sits underneath, it is the short list, after the chapter. Highlight any sentence. Add a note. It
+          stays in this browser.
         </p>
         <table className="table lesson-table syllabus">
           <caption>How the 100 questions are split (syllabus, ±2)</caption>
@@ -290,6 +290,9 @@ export function Book() {
                 <Notes sectionId={b.id} marks={marks} onChange={setMarks} />
               </div>
             ))}
+            {c.chapter <= 6 && sourced(c.chapter).length > 0 && (
+              <h3 className="kf-break">Key facts checklist</h3>
+            )}
             {c.chapter <= 6 &&
               sourced(c.chapter).map((s) => (
                 <Sourced key={s.id} section={s} marks={marks} onChange={setMarks} />

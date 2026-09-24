@@ -40,6 +40,36 @@ import { shuffleMcq } from "../src/engine/shuffle";
 describe("study book", () => {
   it("covers all 13 chapters and is long enough to read", () => {
     expect(COMPANION.map((c) => c.chapter)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(COMPANION.map((c) => c.title)).toEqual([
+      "Motor insurance",
+      "Health insurance",
+      "Package policies",
+      "Property insurance",
+      "Pecuniary insurance",
+      "Liability insurance",
+      "Non-insurance services",
+      "Material circumstances",
+      "Underwriting procedures and premium payment",
+      "Policy wordings and renewals",
+      "Valid claims and claims settlement",
+      "Confidential information, technology and data protection",
+      "Customer service",
+    ]);
+    expect(COMPANION.find((c) => c.chapter === 1)?.blocks.map((b) => b.heading)).toEqual([
+      "Private motor insurance",
+      "Motorcycle insurance",
+      "Commercial motor insurance",
+    ]);
+    expect(COMPANION.find((c) => c.chapter === 6)?.blocks.map((b) => b.heading)).toEqual([
+      "Employers’ liability insurance",
+      "Public liability insurance",
+      "Product liability insurance",
+      "Directors’ and officers’ D&O insurance",
+      "Professional indemnity insurance",
+      "Trustee insurance",
+      "Cyber insurance",
+      "Extended warranties",
+    ]);
     const words = COMPANION.flatMap((c) =>
       c.blocks.flatMap((b) => [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])
     )
