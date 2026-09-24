@@ -1,0 +1,35 @@
+# Copy sections into %LOCALAPPDATA%\LOQCommandCenter\config.yaml
+
+machine:
+  display_name: "Haruko's LOQ"
+
+discovery:
+  project_roots:
+    - "C:/Users/Haruko/projects"
+    - "C:/Users/Haruko/Documents/GitHub"
+    - "D:/dev"
+
+projects:
+  - id: my-app
+    name: My FastAPI App
+    path: "C:/Users/Haruko/projects/my-app"
+    pinned: true
+    actions:
+      - id: start
+        name: Start dev server
+        command: ["python", "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"]
+        requires_confirmation: true
+      - id: stop
+        name: Stop dev server
+        requires_confirmation: false
+
+outputs:
+  safe_directories:
+    - "C:/Users/Haruko/projects/my-app/reports"
+
+actions:
+  - id: disk-cleanup-temp
+    name: Clear LOQ temp logs
+    description: Runs only inside data directory
+    command: ["python", "-c", "print('ok')"]
+    cwd_approved: false

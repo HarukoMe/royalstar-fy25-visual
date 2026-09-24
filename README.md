@@ -4,7 +4,7 @@ This repository holds three separate apps. They do not share a runtime, types, o
 
 | App | Path | What it is |
 | --- | --- | --- |
-| **IF2 Conduct** | `apps/if2` | CII IF2 2026 study companion: the whole paper in one scroll, plus cards and MCQs |
+| **IF2 Conduct** | `apps/if2` | CII IF2 2026 study companion: the whole paper in one scroll, with the key facts and exam practice |
 | **Soundings** | `apps/soundings` | Private personal financial control room |
 | **Plate Room** | `apps/plate-room` | Cinematic FY2025 reading of RoyalStar Assurance’s audited statements |
 

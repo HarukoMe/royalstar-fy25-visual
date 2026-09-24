@@ -1,0 +1,64 @@
+machine:
+  display_name: "Lenovo LOQ"
+  hostname_override: null
+
+discovery:
+  project_roots:
+    - "~/projects"
+    - "~/dev"
+    - "~/Development"
+    - "~/Documents/GitHub"
+    - "~/source"
+    - "~/repos"
+    - "~/code"
+  max_projects: 80
+  max_depth: 4
+  ignore_dir_names:
+    - node_modules
+    - .venv
+    - venv
+    - __pycache__
+    - .git
+    - dist
+    - build
+    - .next
+
+services:
+  known_ports:
+    - { port: 11434, name: "Ollama", kind: "ollama", health_path: "/api/tags" }
+    - { port: 5173, name: "Vite dev", kind: "vite" }
+    - { port: 5174, name: "Vite dev", kind: "vite" }
+    - { port: 5175, name: "Vite dev", kind: "vite" }
+    - { port: 3000, name: "Node dev", kind: "node" }
+    - { port: 8000, name: "FastAPI/Uvicorn", kind: "python" }
+    - { port: 8080, name: "HTTP server", kind: "http" }
+    - { port: 8888, name: "Jupyter", kind: "jupyter" }
+    - { port: 8742, name: "LOQ Command Center API", kind: "loq-api" }
+    - { port: 8743, name: "LOQ Command Center UI", kind: "loq-ui" }
+  ignore_ports_below: 1024
+  pinned: []
+  hidden: []
+
+thresholds:
+  gpu_util_high: 85
+  gpu_temp_high_c: 83
+  ram_used_pct_high: 90
+  disk_free_gb_low: 15
+
+ollama:
+  base_url: "http://127.0.0.1:11434"
+
+docker:
+  enabled: true
+
+outputs:
+  safe_directories: []
+
+projects: []
+
+actions: []
+
+remote:
+  tailscale:
+    enabled: false
+    serve_port: 8743
