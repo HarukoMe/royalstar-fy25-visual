@@ -72,6 +72,30 @@ export function importProgress(raw: unknown): { ok: true } | { ok: false; error:
   }
 }
 
+export type BookMark = {
+  id: string;
+  sectionId: string;
+  quote: string;
+  note: string;
+  color: "ink" | "amber";
+};
+
+const MKEY = "if2-book-marks-v1";
+
+export function loadMarks(): BookMark[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(MKEY) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((m) => m && typeof m.sectionId === "string" && typeof m.quote === "string");
+  } catch {
+    return [];
+  }
+}
+
+export function saveMarks(marks: BookMark[]) {
+  localStorage.setItem(MKEY, JSON.stringify(marks));
+}
+
 export function downloadProgress() {
   const blob = new Blob([JSON.stringify(exportProgress(), null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);

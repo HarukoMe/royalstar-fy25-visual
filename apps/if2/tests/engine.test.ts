@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMPANION } from "../src/curriculum/companion";
 import { loadCurriculum } from "../src/curriculum/compile";
 import { runIntegrity } from "../src/engine/integrity";
 import { coverageOf } from "../src/engine/coverage";
@@ -35,6 +36,57 @@ import {
 import { tutorExplain } from "../src/engine/tutor";
 import { finishExam, startExam } from "../src/engine/exam";
 import { shuffleMcq } from "../src/engine/shuffle";
+
+describe("study book", () => {
+  it("covers all 13 chapters and is long enough to read", () => {
+    expect(COMPANION.map((c) => c.chapter)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(COMPANION.map((c) => c.title)).toEqual([
+      "Motor insurance",
+      "Health insurance",
+      "Package policies",
+      "Property insurance",
+      "Pecuniary insurance",
+      "Liability insurance",
+      "Non-insurance services",
+      "Material circumstances",
+      "Underwriting procedures and premium payment",
+      "Policy wordings and renewals",
+      "Valid claims and claims settlement",
+      "Confidential information, technology and data protection",
+      "Customer service",
+    ]);
+    expect(COMPANION.find((c) => c.chapter === 1)?.blocks.map((b) => b.heading)).toEqual([
+      "Private motor insurance",
+      "Motorcycle insurance",
+      "Commercial motor insurance",
+    ]);
+    expect(COMPANION.find((c) => c.chapter === 6)?.blocks.map((b) => b.heading)).toEqual([
+      "Employers’ liability insurance",
+      "Public liability insurance",
+      "Product liability insurance",
+      "Directors’ and officers’ D&O insurance",
+      "Professional indemnity insurance",
+      "Trustee insurance",
+      "Cyber insurance",
+      "Extended warranties",
+    ]);
+    const words = COMPANION.flatMap((c) =>
+      c.blocks.flatMap((b) => [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])
+    )
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean);
+    expect(words.length).toBeGreaterThan(6000);
+    for (const n of [7, 8, 9, 10, 11, 12, 13]) {
+      const chapter = COMPANION.find((c) => c.chapter === n);
+      expect(chapter?.blocks.length ?? 0).toBeGreaterThanOrEqual(5);
+    }
+    const { sections } = loadCurriculum();
+    expect(sections.length).toBeGreaterThan(80);
+    const sourced = sections.reduce((n, s) => n + s.reading.map((r) => r.body).join(" ").length, 0);
+    expect(sourced).toBeGreaterThan(40_000);
+  });
+});
 
 describe("curriculum integrity", () => {
   it("stays inside chapters 1–6 and LO 1.1", () => {

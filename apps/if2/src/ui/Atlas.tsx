@@ -20,13 +20,13 @@ type View =
 
 export function Atlas({
   learner,
-  onStart,
+  onRead,
   onReset,
   onExam,
   onImported,
 }: {
   learner: LearnerModel;
-  onStart: (chapter?: 1 | 2 | 3 | 4 | 5 | 6) => void;
+  onRead: (chapter?: 1 | 2 | 3 | 4 | 5 | 6) => void;
   onReset: () => void;
   onExam: () => void;
   onImported?: () => void;
@@ -46,11 +46,11 @@ export function Atlas({
       <h2>Chapters 1–6 of IF2 (syllabus 1.1 products).</h2>
       <p className="lede">
         {curr.stats.concepts} concepts · {curr.stats.facts} sourced claims · {curr.stats.sections} sections ·{" "}
-        {curr.stats.mcq} multiple-choice items ({curr.stats.examStyleMcq} exam-shaped). Study is read the book with
-        Next. Check this when you want a question on that lesson. This map is for gaps, mix-ups and a backup if you switch computers.
+        {curr.stats.mcq} multiple-choice items ({curr.stats.examStyleMcq} exam-shaped). The book is the reading. This
+        map is gaps, mix-ups, and a backup if you switch computers.
       </p>
       <div className="row">
-        <button onClick={() => onStart()}>{exposed ? "Continue reading" : "Start reading"}</button>
+        <button onClick={() => onRead()}>Read the book</button>
         <button className="ghost" onClick={onExam}>
           Exam practice
         </button>
@@ -126,7 +126,7 @@ export function Atlas({
                     {" "}
                     · {curr.stats.conceptsByChapter[ch]} concepts · {curr.stats.factsByChapter[ch]} claims
                   </span>
-                  <button className="ghost" style={{ marginLeft: "0.6rem", padding: "0.2rem 0.7rem" }} onClick={() => onStart(ch)}>
+                  <button className="ghost" style={{ marginLeft: "0.6rem", padding: "0.2rem 0.7rem" }} onClick={() => onRead(ch)}>
                     Read
                   </button>
                 </h3>
