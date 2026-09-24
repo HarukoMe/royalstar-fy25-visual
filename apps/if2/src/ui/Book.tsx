@@ -44,13 +44,15 @@ function Prose({
   id,
   text,
   marks,
+  className,
 }: {
   id: string;
   text: string;
   marks: BookMark[];
+  className?: string;
 }) {
   const mine = marks.filter((m) => m.sectionId === id);
-  return <p>{paint(text, mine)}</p>;
+  return <p className={className}>{paint(text, mine)}</p>;
 }
 
 export function Book() {
@@ -115,7 +117,7 @@ export function Book() {
     });
 
   const words =
-    COMPANION.flatMap((c) => c.blocks.flatMap((b) => b.paras)).join(" ").split(/\s+/).length +
+    COMPANION.flatMap((c) => c.blocks.flatMap((b) => [b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])).join(" ").split(/\s+/).length +
     Math.round(
       curr.sections.reduce(
         (n, s) => n + s.reading.map((r) => `${r.body} ${(r.bullets ?? []).join(" ")}`).join(" ").length,
@@ -156,15 +158,9 @@ export function Book() {
         <p className="kicker">IF2 2026 · 100 questions · 2 hours · English law</p>
         <h2>The whole paper, in one read.</h2>
         <p className="lede">
-          About {words.toLocaleString()} words. Chapters 1–6 are every key-facts heading in this app, one after another,
-          not a single card. Chapters 7–13 are original teaching for the rest of the syllabus — underwriting, wordings,
-          claims, data, customers — which is where most of the marks sit. Highlight any sentence. Add a note. It stays
-          in this browser.
-        </p>
-        <p className="mixup">
-          This is a study companion. It is not a copy of the CII study text or key facts booklet, and it does not replace
-          the book you are enrolled on. Where a heading below is sourced, it is the claim already used in this app, with
-          a locator. The notes in my voice are explanations, not extra rules.
+          About {words.toLocaleString()} words. Chapters 1–6 run every key-facts heading, one after another. Chapters 7–13
+          are written out in full: services, material facts, the underwriting chain, wordings, claims, data, customers.
+          That is where most of the marks sit. Highlight any sentence. Add a note. It stays in this browser.
         </p>
         <table className="table lesson-table">
           <caption>How the 100 questions are split (syllabus, ±2)</caption>
@@ -223,7 +219,7 @@ export function Book() {
             {c.blocks.map((b) => (
               <div key={b.id} className="book-note" data-sec={b.id}>
                 <h3>{b.heading}</h3>
-                {b.hold && <p className="hold">{b.hold}</p>}
+                {b.hold && <Prose id={b.id} text={b.hold} marks={marks} className="hold" />}
                 {b.paras.map((p) => (
                   <Prose key={p.slice(0, 48)} id={b.id} text={p} marks={marks} />
                 ))}

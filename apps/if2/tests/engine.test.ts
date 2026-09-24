@@ -40,8 +40,17 @@ import { shuffleMcq } from "../src/engine/shuffle";
 describe("study book", () => {
   it("covers all 13 chapters and is long enough to read", () => {
     expect(COMPANION.map((c) => c.chapter)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
-    const words = COMPANION.flatMap((c) => c.blocks.flatMap((b) => [b.hold ?? "", ...b.paras])).join(" ").split(/\s+/).filter(Boolean);
-    expect(words.length).toBeGreaterThan(2200);
+    const words = COMPANION.flatMap((c) =>
+      c.blocks.flatMap((b) => [b.heading, b.hold ?? "", ...b.paras, ...(b.bullets ?? [])])
+    )
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean);
+    expect(words.length).toBeGreaterThan(6000);
+    for (const n of [7, 8, 9, 10, 11, 12, 13]) {
+      const chapter = COMPANION.find((c) => c.chapter === n);
+      expect(chapter?.blocks.length ?? 0).toBeGreaterThanOrEqual(5);
+    }
     const { sections } = loadCurriculum();
     expect(sections.length).toBeGreaterThan(80);
     const sourced = sections.reduce((n, s) => n + s.reading.map((r) => r.body).join(" ").length, 0);
